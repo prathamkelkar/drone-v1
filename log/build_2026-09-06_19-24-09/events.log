@@ -1,0 +1,379 @@
+[0.000000] (-) TimerEvent: {}
+[0.001766] (px4) JobQueued: {'identifier': 'px4', 'dependencies': OrderedDict()}
+[0.001840] (simple_quadcopter_teleop) JobQueued: {'identifier': 'simple_quadcopter_teleop', 'dependencies': OrderedDict()}
+[0.001877] (px4) JobStarted: {'identifier': 'px4'}
+[0.007823] (simple_quadcopter_teleop) JobStarted: {'identifier': 'simple_quadcopter_teleop'}
+[0.012149] (px4) JobProgress: {'identifier': 'px4', 'progress': 'cmake'}
+[0.012490] (px4) Command: {'cmd': ['/usr/bin/cmake', '/home/prathamkelkar/ros2_ws/PX4-Autopilot', '-DAMENT_CMAKE_SYMLINK_INSTALL=1', '-DCMAKE_INSTALL_PREFIX=/home/prathamkelkar/ros2_ws/install/px4'], 'cwd': '/home/prathamkelkar/ros2_ws/build/px4', 'env': OrderedDict({'LESSOPEN': '| /usr/bin/lesspipe %s', 'USER': 'prathamkelkar', 'XDG_SESSION_TYPE': 'x11', 'CLUTTER_DISABLE_MIPMAPPED_TEXT': '1', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/jazzy/opt/rviz_ogre_vendor/lib:/opt/ros/jazzy/lib/x86_64-linux-gnu:/opt/ros/jazzy/opt/gz_math_vendor/lib:/opt/ros/jazzy/opt/gz_utils_vendor/lib:/opt/ros/jazzy/opt/gz_cmake_vendor/lib:/opt/ros/jazzy/lib', 'HOME': '/home/prathamkelkar', 'OLDPWD': '/home/prathamkelkar/ros2_ws/src', 'DESKTOP_SESSION': 'ubuntu', 'ROS_PYTHON_VERSION': '3', 'GNOME_SHELL_SESSION_MODE': 'ubuntu', 'GTK_MODULES': 'gail:atk-bridge', 'SYSTEMD_EXEC_PID': '2713', 'GSM_SKIP_SSH_AGENT_WORKAROUND': 'true', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'COLORTERM': 'truecolor', 'DEBUGINFOD_URLS': 'https://debuginfod.ubuntu.com', 'ROS_DISTRO': 'jazzy', 'LOGNAME': 'prathamkelkar', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'MEMORY_PRESSURE_WATCH': '/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/session.slice/org.gnome.Shell@x11.service/memory.pressure', 'XDG_SESSION_CLASS': 'user', 'USERNAME': 'prathamkelkar', 'TERM': 'xterm-256color', 'GNOME_DESKTOP_SESSION_ID': 'this-is-deprecated', 'WINDOWPATH': '2', 'PATH': '/opt/ros/jazzy/bin:/home/prathamkelkar/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/opt/xtensa-esp-elf/bin/', 'SESSION_MANAGER': 'local/prathamkelkar-Dell-Pro-Max-16-MC16250:@/tmp/.ICE-unix/2683,unix/prathamkelkar-Dell-Pro-Max-16-MC16250:/tmp/.ICE-unix/2683', 'XDG_MENU_PREFIX': 'gnome-', 'GNOME_TERMINAL_SCREEN': '/org/gnome/Terminal/screen/0736acf2_68b1_4dd0_8682_a6255c6a2409', 'XDG_RUNTIME_DIR': '/run/user/1000', 'DISPLAY': ':0', 'LANG': 'en_US.UTF-8', 'XDG_CURRENT_DESKTOP': 'ubuntu:GNOME', 'XMODIFIERS': '@im=ibus', 'XDG_SESSION_DESKTOP': 'ubuntu', 'XAUTHORITY': '/run/user/1000/gdm/Xauthority', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=00:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.avif=01;35:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:*~=00;90:*#=00;90:*.bak=00;90:*.crdownload=00;90:*.dpkg-dist=00;90:*.dpkg-new=00;90:*.dpkg-old=00;90:*.dpkg-tmp=00;90:*.old=00;90:*.orig=00;90:*.part=00;90:*.rej=00;90:*.rpmnew=00;90:*.rpmorig=00;90:*.rpmsave=00;90:*.swp=00;90:*.tmp=00;90:*.ucf-dist=00;90:*.ucf-new=00;90:*.ucf-old=00;90:', 'GNOME_TERMINAL_SERVICE': ':1.108', 'SSH_AUTH_SOCK': '/run/user/1000/keyring/ssh', 'AMENT_PREFIX_PATH': '/opt/ros/jazzy', 'SHELL': '/bin/bash', 'QT_ACCESSIBILITY': '1', 'GDMSESSION': 'ubuntu', 'LESSCLOSE': '/usr/bin/lesspipe %s %s', 'GPG_AGENT_INFO': '/run/user/1000/gnupg/S.gpg-agent:0:1', 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'SUBNET', 'QT_IM_MODULE': 'ibus', 'PWD': '/home/prathamkelkar/ros2_ws/build/px4', 'LC_ALL': 'en_US.UTF-8', 'XDG_CONFIG_DIRS': '/etc/xdg/xdg-ubuntu:/etc/xdg', 'XDG_DATA_DIRS': '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop', 'PYTHONPATH': '/opt/ros/jazzy/lib/python3.12/site-packages', 'COLCON': '1', 'MEMORY_PRESSURE_WRITE': 'c29tZSAyMDAwMDAgMjAwMDAwMAA=', 'VTE_VERSION': '7600', 'CMAKE_PREFIX_PATH': '/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor:/opt/ros/jazzy'}), 'shell': False}
+[0.100017] (-) TimerEvent: {}
+[0.144902] (px4) StdoutLine: {'line': b'-- PX4_GIT_TAG: v1.18.0-beta1-593-g6dc89338a8\n'}
+[0.200271] (-) TimerEvent: {}
+[0.300736] (-) TimerEvent: {}
+[0.401191] (-) TimerEvent: {}
+[0.422701] (px4) StdoutLine: {'line': b'-- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter \n'}
+[0.468976] (px4) StdoutLine: {'line': b'-- PX4 config file: /home/prathamkelkar/ros2_ws/PX4-Autopilot/boards/px4/ros2/default.px4board\n'}
+[0.501280] (-) TimerEvent: {}
+[0.601690] (-) TimerEvent: {}
+[0.702212] (-) TimerEvent: {}
+[0.802734] (-) TimerEvent: {}
+[0.903246] (-) TimerEvent: {}
+[1.003723] (-) TimerEvent: {}
+[1.033409] (px4) StdoutLine: {'line': b'-- PLATFORM ros2\n'}
+[1.033734] (px4) StdoutLine: {'line': b'-- ROMFSROOT px4fmu_common\n'}
+[1.036158] (px4) StdoutLine: {'line': b'-- ROOT_PATH /fs/microsd\n'}
+[1.036334] (px4) StdoutLine: {'line': b'-- PARAM_FILE /fs/mtd_params\n'}
+[1.063423] (px4) StdoutLine: {'line': b'-- PX4 config: px4_ros2_default\n'}
+[1.063676] (px4) StdoutLine: {'line': b'-- PX4 platform: ros2\n'}
+[1.103896] (-) TimerEvent: {}
+[1.204332] (-) TimerEvent: {}
+[1.247921] (px4) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 13.3.0\n'}
+[1.284840] (px4) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[1.304568] (-) TimerEvent: {}
+[1.362301] (simple_quadcopter_teleop) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'develop', '--editable', '--build-directory', '/home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop/build', '--no-deps', 'symlink_data'], 'cwd': '/home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop', 'env': {'LESSOPEN': '| /usr/bin/lesspipe %s', 'USER': 'prathamkelkar', 'XDG_SESSION_TYPE': 'x11', 'CLUTTER_DISABLE_MIPMAPPED_TEXT': '1', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/jazzy/opt/rviz_ogre_vendor/lib:/opt/ros/jazzy/lib/x86_64-linux-gnu:/opt/ros/jazzy/opt/gz_math_vendor/lib:/opt/ros/jazzy/opt/gz_utils_vendor/lib:/opt/ros/jazzy/opt/gz_cmake_vendor/lib:/opt/ros/jazzy/lib', 'HOME': '/home/prathamkelkar', 'OLDPWD': '/home/prathamkelkar/ros2_ws/src', 'DESKTOP_SESSION': 'ubuntu', 'ROS_PYTHON_VERSION': '3', 'GNOME_SHELL_SESSION_MODE': 'ubuntu', 'GTK_MODULES': 'gail:atk-bridge', 'SYSTEMD_EXEC_PID': '2713', 'GSM_SKIP_SSH_AGENT_WORKAROUND': 'true', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1000/bus', 'COLORTERM': 'truecolor', 'DEBUGINFOD_URLS': 'https://debuginfod.ubuntu.com', 'ROS_DISTRO': 'jazzy', 'LOGNAME': 'prathamkelkar', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'MEMORY_PRESSURE_WATCH': '/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/session.slice/org.gnome.Shell@x11.service/memory.pressure', 'XDG_SESSION_CLASS': 'user', 'USERNAME': 'prathamkelkar', 'TERM': 'xterm-256color', 'GNOME_DESKTOP_SESSION_ID': 'this-is-deprecated', 'WINDOWPATH': '2', 'PATH': '/opt/ros/jazzy/bin:/home/prathamkelkar/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/opt/xtensa-esp-elf/bin/', 'SESSION_MANAGER': 'local/prathamkelkar-Dell-Pro-Max-16-MC16250:@/tmp/.ICE-unix/2683,unix/prathamkelkar-Dell-Pro-Max-16-MC16250:/tmp/.ICE-unix/2683', 'XDG_MENU_PREFIX': 'gnome-', 'GNOME_TERMINAL_SCREEN': '/org/gnome/Terminal/screen/0736acf2_68b1_4dd0_8682_a6255c6a2409', 'XDG_RUNTIME_DIR': '/run/user/1000', 'DISPLAY': ':0', 'LANG': 'en_US.UTF-8', 'XDG_CURRENT_DESKTOP': 'ubuntu:GNOME', 'XMODIFIERS': '@im=ibus', 'XDG_SESSION_DESKTOP': 'ubuntu', 'XAUTHORITY': '/run/user/1000/gdm/Xauthority', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=00:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.avif=01;35:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:*~=00;90:*#=00;90:*.bak=00;90:*.crdownload=00;90:*.dpkg-dist=00;90:*.dpkg-new=00;90:*.dpkg-old=00;90:*.dpkg-tmp=00;90:*.old=00;90:*.orig=00;90:*.part=00;90:*.rej=00;90:*.rpmnew=00;90:*.rpmorig=00;90:*.rpmsave=00;90:*.swp=00;90:*.tmp=00;90:*.ucf-dist=00;90:*.ucf-new=00;90:*.ucf-old=00;90:', 'GNOME_TERMINAL_SERVICE': ':1.108', 'SSH_AUTH_SOCK': '/run/user/1000/keyring/ssh', 'AMENT_PREFIX_PATH': '/opt/ros/jazzy', 'SHELL': '/bin/bash', 'QT_ACCESSIBILITY': '1', 'GDMSESSION': 'ubuntu', 'LESSCLOSE': '/usr/bin/lesspipe %s %s', 'GPG_AGENT_INFO': '/run/user/1000/gnupg/S.gpg-agent:0:1', 'ROS_AUTOMATIC_DISCOVERY_RANGE': 'SUBNET', 'QT_IM_MODULE': 'ibus', 'PWD': '/home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop', 'LC_ALL': 'en_US.UTF-8', 'XDG_CONFIG_DIRS': '/etc/xdg/xdg-ubuntu:/etc/xdg', 'XDG_DATA_DIRS': '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop', 'PYTHONPATH': '/home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/lib/python3.12/site-packages:/opt/ros/jazzy/lib/python3.12/site-packages', 'COLCON': '1', 'MEMORY_PRESSURE_WRITE': 'c29tZSAyMDAwMDAgMjAwMDAwMAA=', 'VTE_VERSION': '7600', 'CMAKE_PREFIX_PATH': '/opt/ros/jazzy/opt/gz_math_vendor:/opt/ros/jazzy/opt/gz_utils_vendor:/opt/ros/jazzy/opt/gz_cmake_vendor'}, 'shell': False}
+[1.404736] (-) TimerEvent: {}
+[1.472415] (px4) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[1.491716] (px4) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ - skipped\n'}
+[1.501189] (px4) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[1.502664] (px4) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[1.504889] (-) TimerEvent: {}
+[1.512891] (px4) StdoutLine: {'line': b'-- Found ament_cmake: 2.5.6 (/opt/ros/jazzy/share/ament_cmake/cmake)\n'}
+[1.605003] (-) TimerEvent: {}
+[1.655186] (px4) StdoutLine: {'line': b'-- Override CMake install command with custom implementation using symlinks instead of copying resources\n'}
+[1.705225] (-) TimerEvent: {}
+[1.715076] (simple_quadcopter_teleop) StdoutLine: {'line': b'running develop\n'}
+[1.716996] (px4) StdoutLine: {'line': b'-- Found rclcpp: 28.1.21 (/opt/ros/jazzy/share/rclcpp/cmake)\n'}
+[1.803330] (px4) StdoutLine: {'line': b'-- Found rosidl_generator_c: 4.6.9 (/opt/ros/jazzy/share/rosidl_generator_c/cmake)\n'}
+[1.805310] (-) TimerEvent: {}
+[1.827204] (px4) StdoutLine: {'line': b'-- Found rosidl_generator_cpp: 4.6.9 (/opt/ros/jazzy/share/rosidl_generator_cpp/cmake)\n'}
+[1.859387] (px4) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[1.875670] (simple_quadcopter_teleop) StdoutLine: {'line': b'running egg_info\n'}
+[1.875891] (simple_quadcopter_teleop) StdoutLine: {'line': b'creating simple_quadcopter_teleop.egg-info\n'}
+[1.890959] (simple_quadcopter_teleop) StdoutLine: {'line': b'writing simple_quadcopter_teleop.egg-info/PKG-INFO\n'}
+[1.891405] (simple_quadcopter_teleop) StdoutLine: {'line': b'writing dependency_links to simple_quadcopter_teleop.egg-info/dependency_links.txt\n'}
+[1.891606] (simple_quadcopter_teleop) StdoutLine: {'line': b'writing requirements to simple_quadcopter_teleop.egg-info/requires.txt\n'}
+[1.891688] (simple_quadcopter_teleop) StdoutLine: {'line': b'writing top-level names to simple_quadcopter_teleop.egg-info/top_level.txt\n'}
+[1.891768] (simple_quadcopter_teleop) StdoutLine: {'line': b"writing manifest file 'simple_quadcopter_teleop.egg-info/SOURCES.txt'\n"}
+[1.893558] (px4) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[1.905460] (-) TimerEvent: {}
+[1.922721] (simple_quadcopter_teleop) StdoutLine: {'line': b"reading manifest file 'simple_quadcopter_teleop.egg-info/SOURCES.txt'\n"}
+[1.923329] (simple_quadcopter_teleop) StdoutLine: {'line': b"writing manifest file 'simple_quadcopter_teleop.egg-info/SOURCES.txt'\n"}
+[1.939699] (simple_quadcopter_teleop) StdoutLine: {'line': b'running build_ext\n'}
+[1.939890] (simple_quadcopter_teleop) StdoutLine: {'line': b'Creating /home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/lib/python3.12/site-packages/simple-quadcopter-teleop.egg-link (link to .)\n'}
+[1.940222] (simple_quadcopter_teleop) StdoutLine: {'line': b'\n'}
+[1.940529] (simple_quadcopter_teleop) StdoutLine: {'line': b'Installed /home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop\n'}
+[1.940689] (simple_quadcopter_teleop) StdoutLine: {'line': b'running symlink_data\n'}
+[1.940778] (simple_quadcopter_teleop) StdoutLine: {'line': b'creating /home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/ament_index\n'}
+[1.940854] (simple_quadcopter_teleop) StdoutLine: {'line': b'creating /home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/ament_index/resource_index\n'}
+[1.940923] (simple_quadcopter_teleop) StdoutLine: {'line': b'creating /home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/ament_index/resource_index/packages\n'}
+[1.940986] (simple_quadcopter_teleop) StdoutLine: {'line': b'symbolically linking /home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop/resource/simple_quadcopter_teleop -> /home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/ament_index/resource_index/packages\n'}
+[1.941051] (simple_quadcopter_teleop) StdoutLine: {'line': b'symbolically linking /home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop/package.xml -> /home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/simple_quadcopter_teleop\n'}
+[1.972308] (simple_quadcopter_teleop) CommandEnded: {'returncode': 0}
+[1.984629] (simple_quadcopter_teleop) JobEnded: {'identifier': 'simple_quadcopter_teleop', 'rc': 0}
+[2.005617] (-) TimerEvent: {}
+[2.065929] (px4) StdoutLine: {'line': b'-- Found rmw_implementation_cmake: 7.3.3 (/opt/ros/jazzy/share/rmw_implementation_cmake/cmake)\n'}
+[2.073258] (px4) StdoutLine: {'line': b'-- Found rmw_fastrtps_cpp: 8.4.4 (/opt/ros/jazzy/share/rmw_fastrtps_cpp/cmake)\n'}
+[2.105801] (-) TimerEvent: {}
+[2.205793] (px4) StdoutLine: {'line': b'-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.13")  \n'}
+[2.206041] (-) TimerEvent: {}
+[2.249801] (px4) StdoutLine: {'line': b'-- Found FastRTPS: /opt/ros/jazzy/include (Required is at least version "2.13") \n'}
+[2.291183] (px4) StdoutLine: {'line': b"-- Using RMW implementation 'rmw_fastrtps_cpp' as default\n"}
+[2.306269] (-) TimerEvent: {}
+[2.406575] (-) TimerEvent: {}
+[2.474492] (px4) StdoutLine: {'line': b'-- Found rosidl_default_generators: 1.6.1 (/opt/ros/jazzy/share/rosidl_default_generators/cmake)\n'}
+[2.506776] (-) TimerEvent: {}
+[2.508074] (px4) StdoutLine: {'line': b'-- Found rosidl_adapter: 4.6.9 (/opt/ros/jazzy/share/rosidl_adapter/cmake)\n'}
+[2.517430] (px4) StdoutLine: {'line': b'-- Found std_msgs: 5.3.8 (/opt/ros/jazzy/share/std_msgs/cmake)\n'}
+[2.606989] (-) TimerEvent: {}
+[2.680225] (px4) StdoutLine: {'line': b'-- The C compiler identification is GNU 13.3.0\n'}
+[2.703838] (px4) StdoutLine: {'line': b'-- The ASM compiler identification is GNU\n'}
+[2.707121] (-) TimerEvent: {}
+[2.708337] (px4) StdoutLine: {'line': b'-- Found assembler: /usr/bin/cc\n'}
+[2.730971] (px4) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[2.807321] (-) TimerEvent: {}
+[2.876638] (px4) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[2.895199] (px4) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc - skipped\n'}
+[2.895859] (px4) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[2.896563] (px4) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[2.907503] (-) TimerEvent: {}
+[2.910337] (px4) StdoutLine: {'line': b'-- cmake build type: RelWithDebInfo\n'}
+[2.911257] (px4) StdoutLine: {'line': b'-- ccache enabled (export CCACHE_DISABLE=1 to disable)\n'}
+[2.981097] (px4) StdoutLine: {'line': b'-- Adding fuzztest\n'}
+[3.007694] (-) TimerEvent: {}
+[3.108195] (-) TimerEvent: {}
+[3.208794] (-) TimerEvent: {}
+[3.309656] (-) TimerEvent: {}
+[3.410639] (-) TimerEvent: {}
+[3.511341] (-) TimerEvent: {}
+[3.612264] (-) TimerEvent: {}
+[3.712982] (-) TimerEvent: {}
+[3.813945] (-) TimerEvent: {}
+[3.914860] (-) TimerEvent: {}
+[4.015592] (-) TimerEvent: {}
+[4.116499] (-) TimerEvent: {}
+[4.217220] (-) TimerEvent: {}
+[4.317818] (-) TimerEvent: {}
+[4.418351] (-) TimerEvent: {}
+[4.518888] (-) TimerEvent: {}
+[4.619462] (-) TimerEvent: {}
+[4.720131] (-) TimerEvent: {}
+[4.820717] (-) TimerEvent: {}
+[4.921267] (-) TimerEvent: {}
+[5.021888] (-) TimerEvent: {}
+[5.122700] (-) TimerEvent: {}
+[5.223598] (-) TimerEvent: {}
+[5.324308] (-) TimerEvent: {}
+[5.425186] (-) TimerEvent: {}
+[5.525898] (-) TimerEvent: {}
+[5.626528] (-) TimerEvent: {}
+[5.727212] (-) TimerEvent: {}
+[5.827915] (-) TimerEvent: {}
+[5.928838] (-) TimerEvent: {}
+[6.029742] (-) TimerEvent: {}
+[6.130484] (-) TimerEvent: {}
+[6.231232] (-) TimerEvent: {}
+[6.332050] (-) TimerEvent: {}
+[6.432734] (-) TimerEvent: {}
+[6.533409] (-) TimerEvent: {}
+[6.634277] (-) TimerEvent: {}
+[6.735174] (-) TimerEvent: {}
+[6.836103] (-) TimerEvent: {}
+[6.936974] (-) TimerEvent: {}
+[7.037641] (-) TimerEvent: {}
+[7.138308] (-) TimerEvent: {}
+[7.239191] (-) TimerEvent: {}
+[7.340095] (-) TimerEvent: {}
+[7.440985] (-) TimerEvent: {}
+[7.541656] (-) TimerEvent: {}
+[7.642314] (-) TimerEvent: {}
+[7.742821] (-) TimerEvent: {}
+[7.843236] (-) TimerEvent: {}
+[7.943600] (-) TimerEvent: {}
+[8.043976] (-) TimerEvent: {}
+[8.144358] (-) TimerEvent: {}
+[8.244781] (-) TimerEvent: {}
+[8.345226] (-) TimerEvent: {}
+[8.445719] (-) TimerEvent: {}
+[8.546185] (-) TimerEvent: {}
+[8.646651] (-) TimerEvent: {}
+[8.747247] (-) TimerEvent: {}
+[8.847785] (-) TimerEvent: {}
+[8.948350] (-) TimerEvent: {}
+[9.048875] (-) TimerEvent: {}
+[9.140957] (px4) StdoutLine: {'line': b'-- Performing Test ABSL_INTERNAL_AT_LEAST_CXX17\n'}
+[9.149046] (-) TimerEvent: {}
+[9.249504] (-) TimerEvent: {}
+[9.292369] (px4) StdoutLine: {'line': b'-- Performing Test ABSL_INTERNAL_AT_LEAST_CXX17 - Success\n'}
+[9.292854] (px4) StdoutLine: {'line': b'-- Performing Test ABSL_INTERNAL_AT_LEAST_CXX20\n'}
+[9.349737] (-) TimerEvent: {}
+[9.363096] (px4) StdoutLine: {'line': b'-- Performing Test ABSL_INTERNAL_AT_LEAST_CXX20 - Failed\n'}
+[9.372457] (px4) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD\n'}
+[9.449960] (-) TimerEvent: {}
+[9.533965] (px4) StdoutLine: {'line': b'-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success\n'}
+[9.536631] (px4) StdoutLine: {'line': b'-- Found Threads: TRUE  \n'}
+[9.550105] (-) TimerEvent: {}
+[9.650465] (-) TimerEvent: {}
+[9.750808] (-) TimerEvent: {}
+[9.851141] (-) TimerEvent: {}
+[9.951650] (-) TimerEvent: {}
+[10.052465] (-) TimerEvent: {}
+[10.153230] (-) TimerEvent: {}
+[10.254085] (-) TimerEvent: {}
+[10.354848] (-) TimerEvent: {}
+[10.455818] (-) TimerEvent: {}
+[10.556728] (-) TimerEvent: {}
+[10.657680] (-) TimerEvent: {}
+[10.758590] (-) TimerEvent: {}
+[10.859505] (-) TimerEvent: {}
+[10.960130] (-) TimerEvent: {}
+[11.061019] (-) TimerEvent: {}
+[11.161943] (-) TimerEvent: {}
+[11.262731] (-) TimerEvent: {}
+[11.363336] (-) TimerEvent: {}
+[11.464005] (-) TimerEvent: {}
+[11.564710] (-) TimerEvent: {}
+[11.665271] (-) TimerEvent: {}
+[11.765822] (-) TimerEvent: {}
+[11.866284] (-) TimerEvent: {}
+[11.966846] (-) TimerEvent: {}
+[12.067391] (-) TimerEvent: {}
+[12.167925] (-) TimerEvent: {}
+[12.268469] (-) TimerEvent: {}
+[12.369039] (-) TimerEvent: {}
+[12.469638] (-) TimerEvent: {}
+[12.570297] (-) TimerEvent: {}
+[12.671248] (-) TimerEvent: {}
+[12.772240] (-) TimerEvent: {}
+[12.873181] (-) TimerEvent: {}
+[12.974141] (-) TimerEvent: {}
+[13.074786] (-) TimerEvent: {}
+[13.175579] (-) TimerEvent: {}
+[13.276376] (-) TimerEvent: {}
+[13.377028] (-) TimerEvent: {}
+[13.477973] (-) TimerEvent: {}
+[13.578967] (-) TimerEvent: {}
+[13.679936] (-) TimerEvent: {}
+[13.780896] (-) TimerEvent: {}
+[13.881879] (-) TimerEvent: {}
+[13.982573] (-) TimerEvent: {}
+[14.083574] (-) TimerEvent: {}
+[14.184562] (-) TimerEvent: {}
+[14.285479] (-) TimerEvent: {}
+[14.386546] (-) TimerEvent: {}
+[14.487218] (-) TimerEvent: {}
+[14.587949] (-) TimerEvent: {}
+[14.688712] (-) TimerEvent: {}
+[14.789402] (-) TimerEvent: {}
+[14.890428] (-) TimerEvent: {}
+[14.991400] (-) TimerEvent: {}
+[15.092316] (-) TimerEvent: {}
+[15.192982] (-) TimerEvent: {}
+[15.293735] (-) TimerEvent: {}
+[15.394315] (-) TimerEvent: {}
+[15.495243] (-) TimerEvent: {}
+[15.596004] (-) TimerEvent: {}
+[15.696799] (-) TimerEvent: {}
+[15.797515] (-) TimerEvent: {}
+[15.898214] (-) TimerEvent: {}
+[15.999068] (-) TimerEvent: {}
+[16.099958] (-) TimerEvent: {}
+[16.200702] (-) TimerEvent: {}
+[16.301345] (-) TimerEvent: {}
+[16.402215] (-) TimerEvent: {}
+[16.502953] (-) TimerEvent: {}
+[16.603946] (-) TimerEvent: {}
+[16.704676] (-) TimerEvent: {}
+[16.805648] (-) TimerEvent: {}
+[16.906494] (-) TimerEvent: {}
+[17.007472] (-) TimerEvent: {}
+[17.108165] (-) TimerEvent: {}
+[17.208820] (-) TimerEvent: {}
+[17.309481] (-) TimerEvent: {}
+[17.410362] (-) TimerEvent: {}
+[17.511277] (-) TimerEvent: {}
+[17.612000] (-) TimerEvent: {}
+[17.712925] (-) TimerEvent: {}
+[17.813898] (-) TimerEvent: {}
+[17.914507] (-) TimerEvent: {}
+[18.015388] (-) TimerEvent: {}
+[18.116073] (-) TimerEvent: {}
+[18.216787] (-) TimerEvent: {}
+[18.317356] (-) TimerEvent: {}
+[18.418030] (-) TimerEvent: {}
+[18.518689] (-) TimerEvent: {}
+[18.619800] (-) TimerEvent: {}
+[18.720476] (-) TimerEvent: {}
+[18.821178] (-) TimerEvent: {}
+[18.921708] (-) TimerEvent: {}
+[19.022349] (-) TimerEvent: {}
+[19.123115] (-) TimerEvent: {}
+[19.223921] (-) TimerEvent: {}
+[19.324688] (-) TimerEvent: {}
+[19.425506] (-) TimerEvent: {}
+[19.526288] (-) TimerEvent: {}
+[19.627064] (-) TimerEvent: {}
+[19.727836] (-) TimerEvent: {}
+[19.828596] (-) TimerEvent: {}
+[19.929411] (-) TimerEvent: {}
+[20.030237] (-) TimerEvent: {}
+[20.131034] (-) TimerEvent: {}
+[20.232106] (-) TimerEvent: {}
+[20.332952] (-) TimerEvent: {}
+[20.434030] (-) TimerEvent: {}
+[20.534866] (-) TimerEvent: {}
+[20.635718] (-) TimerEvent: {}
+[20.737098] (-) TimerEvent: {}
+[20.838214] (-) TimerEvent: {}
+[20.939030] (-) TimerEvent: {}
+[21.040131] (-) TimerEvent: {}
+[21.141230] (-) TimerEvent: {}
+[21.242062] (-) TimerEvent: {}
+[21.343152] (-) TimerEvent: {}
+[21.443982] (-) TimerEvent: {}
+[21.545071] (-) TimerEvent: {}
+[21.646201] (-) TimerEvent: {}
+[21.747039] (-) TimerEvent: {}
+[21.848111] (-) TimerEvent: {}
+[21.949204] (-) TimerEvent: {}
+[22.050026] (-) TimerEvent: {}
+[22.151099] (-) TimerEvent: {}
+[22.252184] (-) TimerEvent: {}
+[22.353004] (-) TimerEvent: {}
+[22.454075] (-) TimerEvent: {}
+[22.555125] (-) TimerEvent: {}
+[22.656201] (-) TimerEvent: {}
+[22.757012] (-) TimerEvent: {}
+[22.857851] (-) TimerEvent: {}
+[22.958628] (-) TimerEvent: {}
+[23.059504] (-) TimerEvent: {}
+[23.160596] (-) TimerEvent: {}
+[23.261635] (-) TimerEvent: {}
+[23.362429] (-) TimerEvent: {}
+[23.463194] (-) TimerEvent: {}
+[23.563979] (-) TimerEvent: {}
+[23.664728] (-) TimerEvent: {}
+[23.765531] (-) TimerEvent: {}
+[23.783854] (px4) StdoutLine: {'line': b'-- Building without demo. To enable demo build use: -DWITH_DEMO=True\n'}
+[23.865817] (-) TimerEvent: {}
+[23.966563] (-) TimerEvent: {}
+[24.067364] (-) TimerEvent: {}
+[24.168149] (-) TimerEvent: {}
+[24.268958] (-) TimerEvent: {}
+[24.272111] (px4) StdoutLine: {'line': b'-- ROS_VERSION: 2\n'}
+[24.272708] (px4) StdoutLine: {'line': b'-- AMENT_PREFIX_PATH: /opt/ros/jazzy\n'}
+[24.369191] (-) TimerEvent: {}
+[24.469932] (-) TimerEvent: {}
+[24.570697] (-) TimerEvent: {}
+[24.671477] (-) TimerEvent: {}
+[24.772235] (-) TimerEvent: {}
+[24.872989] (-) TimerEvent: {}
+[24.973727] (-) TimerEvent: {}
+[25.074505] (-) TimerEvent: {}
+[25.175267] (-) TimerEvent: {}
+[25.276029] (-) TimerEvent: {}
+[25.376845] (-) TimerEvent: {}
+[25.477608] (-) TimerEvent: {}
+[25.578358] (-) TimerEvent: {}
+[25.679126] (-) TimerEvent: {}
+[25.779884] (-) TimerEvent: {}
+[25.880595] (-) TimerEvent: {}
+[25.981320] (-) TimerEvent: {}
+[26.082024] (-) TimerEvent: {}
+[26.126515] (px4) StdoutLine: {'line': b'-- Found ament_cmake_ros: 0.12.1 (/opt/ros/jazzy/share/ament_cmake_ros/cmake)\n'}
+[26.182262] (-) TimerEvent: {}
+[26.282990] (-) TimerEvent: {}
+[26.383691] (-) TimerEvent: {}
+[26.484464] (-) TimerEvent: {}
+[26.585216] (-) TimerEvent: {}
+[26.593015] (px4) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[26.685465] (-) TimerEvent: {}
+[26.762353] (px4) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[26.772632] (px4) StdoutLine: {'line': b'-- Found python_cmake_module: 0.11.1 (/opt/ros/jazzy/share/python_cmake_module/cmake)\n'}
+[26.785729] (-) TimerEvent: {}
+[26.826672] (px4) StdoutLine: {'line': b'-- Found PythonExtra: /usr/bin/python3  \n'}
+[26.885991] (-) TimerEvent: {}
+[26.986732] (-) TimerEvent: {}
+[27.087472] (-) TimerEvent: {}
+[27.188251] (-) TimerEvent: {}
+[27.288985] (-) TimerEvent: {}
+[27.389700] (-) TimerEvent: {}
+[27.417693] (px4) StdoutLine: {'line': b'-- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter Development NumPy Development.Module Development.Embed \n'}
+[27.489959] (-) TimerEvent: {}
+[27.590704] (-) TimerEvent: {}
+[27.619685] (px4) StdoutLine: {'line': b'-- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter \n'}
+[27.690935] (-) TimerEvent: {}
+[27.791666] (-) TimerEvent: {}
+[27.855987] (px4) StderrLine: {'line': b'\x1b[31mCMake Error at cmake/package.cmake:104 (target_compile_definitions):\n'}
+[27.856669] (px4) StderrLine: {'line': b'  target_compile_definitions called with non-compilable target type\n'}
+[27.856944] (px4) StderrLine: {'line': b'Call Stack (most recent call first):\n'}
+[27.857136] (px4) StderrLine: {'line': b'  CMakeLists.txt:532 (include)\n'}
+[27.857309] (px4) StderrLine: {'line': b'\n'}
+[27.858036] (px4) StderrLine: {'line': b'\x1b[0m\n'}
+[27.858558] (px4) StdoutLine: {'line': b'-- PX4 SITL .deb version: 1.18.0~beta1-noble (amd64)\n'}
+[27.891925] (-) TimerEvent: {}
+[27.992680] (-) TimerEvent: {}
+[28.059316] (px4) StdoutLine: {'line': b'-- Configuring incomplete, errors occurred!\n'}
+[28.092956] (-) TimerEvent: {}
+[28.167069] (px4) CommandEnded: {'returncode': 1}
+[28.193668] (-) TimerEvent: {}
+[28.196933] (px4) JobEnded: {'identifier': 'px4', 'rc': 1}
+[28.208153] (-) EventReactorShutdown: {}
