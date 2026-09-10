@@ -1,0 +1,212 @@
+[0.123s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build', '--symlink-install']
+[0.124s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='build', install_base='install', merge_install=False, symlink_install=True, test_result_base=None, continue_on_error=False, executor='parallel', parallel_workers=16, event_handlers=None, ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['.'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=None, packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, allow_overriding=[], cmake_args=None, cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, mixin_files=None, mixin=None, verb_parser=<colcon_mixin.mixin.mixin_argument.MixinArgumentDecorator object at 0x70b7d819eb40>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0x70b7d82bb3b0>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0x70b7d82bb3b0>>, mixin_verb=('build',))
+[0.165s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.165s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.165s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.165s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.165s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[0.165s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.165s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/home/prathamkelkar/ros2_ws'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[0.166s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[0.195s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[0.195s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[0.195s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[0.195s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[0.195s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[0.195s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ignore', 'ignore_ament_install']
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore'
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore_ament_install'
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_pkg']
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_pkg'
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_meta']
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_meta'
+[0.196s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ros']
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ros'
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['cmake', 'python']
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'cmake'
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python'
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['python_setup_py']
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python_setup_py'
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src/px4_msgs) by extensions ['ignore', 'ignore_ament_install']
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src/px4_msgs) by extension 'ignore'
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src/px4_msgs) by extension 'ignore_ament_install'
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src/px4_msgs) by extensions ['colcon_pkg']
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src/px4_msgs) by extension 'colcon_pkg'
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src/px4_msgs) by extensions ['colcon_meta']
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src/px4_msgs) by extension 'colcon_meta'
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src/px4_msgs) by extensions ['ros']
+[0.197s] Level 1:colcon.colcon_core.package_identification:_identify(src/px4_msgs) by extension 'ros'
+[0.200s] DEBUG:colcon.colcon_core.package_identification:Package 'src/px4_msgs' with type 'ros.ament_cmake' and name 'px4_msgs'
+[0.200s] Level 1:colcon.colcon_core.package_identification:_identify(src/simple_quadcopter_teleop) by extensions ['ignore', 'ignore_ament_install']
+[0.200s] Level 1:colcon.colcon_core.package_identification:_identify(src/simple_quadcopter_teleop) by extension 'ignore'
+[0.200s] Level 1:colcon.colcon_core.package_identification:_identify(src/simple_quadcopter_teleop) by extension 'ignore_ament_install'
+[0.200s] Level 1:colcon.colcon_core.package_identification:_identify(src/simple_quadcopter_teleop) by extensions ['colcon_pkg']
+[0.201s] Level 1:colcon.colcon_core.package_identification:_identify(src/simple_quadcopter_teleop) by extension 'colcon_pkg'
+[0.201s] Level 1:colcon.colcon_core.package_identification:_identify(src/simple_quadcopter_teleop) by extensions ['colcon_meta']
+[0.201s] Level 1:colcon.colcon_core.package_identification:_identify(src/simple_quadcopter_teleop) by extension 'colcon_meta'
+[0.201s] Level 1:colcon.colcon_core.package_identification:_identify(src/simple_quadcopter_teleop) by extensions ['ros']
+[0.201s] Level 1:colcon.colcon_core.package_identification:_identify(src/simple_quadcopter_teleop) by extension 'ros'
+[0.201s] DEBUG:colcon.colcon_core.package_identification:Package 'src/simple_quadcopter_teleop' with type 'ros.ament_python' and name 'simple_quadcopter_teleop'
+[0.201s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[0.201s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[0.201s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[0.201s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[0.201s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[0.222s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) check parameters
+[0.222s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) discover
+[0.225s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 477 installed packages in /opt/ros/jazzy
+[0.227s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) using defaults
+[0.283s] Level 5:colcon.colcon_core.verb:set package 'px4_msgs' build argument 'cmake_args' from command line to 'None'
+[0.283s] Level 5:colcon.colcon_core.verb:set package 'px4_msgs' build argument 'cmake_target' from command line to 'None'
+[0.283s] Level 5:colcon.colcon_core.verb:set package 'px4_msgs' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.283s] Level 5:colcon.colcon_core.verb:set package 'px4_msgs' build argument 'cmake_clean_cache' from command line to 'False'
+[0.283s] Level 5:colcon.colcon_core.verb:set package 'px4_msgs' build argument 'cmake_clean_first' from command line to 'False'
+[0.283s] Level 5:colcon.colcon_core.verb:set package 'px4_msgs' build argument 'cmake_force_configure' from command line to 'False'
+[0.283s] Level 5:colcon.colcon_core.verb:set package 'px4_msgs' build argument 'ament_cmake_args' from command line to 'None'
+[0.283s] Level 5:colcon.colcon_core.verb:set package 'px4_msgs' build argument 'catkin_cmake_args' from command line to 'None'
+[0.283s] Level 5:colcon.colcon_core.verb:set package 'px4_msgs' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.283s] DEBUG:colcon.colcon_core.verb:Building package 'px4_msgs' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/prathamkelkar/ros2_ws/build/px4_msgs', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/prathamkelkar/ros2_ws/install/px4_msgs', 'merge_install': False, 'path': '/home/prathamkelkar/ros2_ws/src/px4_msgs', 'symlink_install': True, 'test_result_base': None}
+[0.284s] Level 5:colcon.colcon_core.verb:set package 'simple_quadcopter_teleop' build argument 'cmake_args' from command line to 'None'
+[0.284s] Level 5:colcon.colcon_core.verb:set package 'simple_quadcopter_teleop' build argument 'cmake_target' from command line to 'None'
+[0.284s] Level 5:colcon.colcon_core.verb:set package 'simple_quadcopter_teleop' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.284s] Level 5:colcon.colcon_core.verb:set package 'simple_quadcopter_teleop' build argument 'cmake_clean_cache' from command line to 'False'
+[0.284s] Level 5:colcon.colcon_core.verb:set package 'simple_quadcopter_teleop' build argument 'cmake_clean_first' from command line to 'False'
+[0.284s] Level 5:colcon.colcon_core.verb:set package 'simple_quadcopter_teleop' build argument 'cmake_force_configure' from command line to 'False'
+[0.284s] Level 5:colcon.colcon_core.verb:set package 'simple_quadcopter_teleop' build argument 'ament_cmake_args' from command line to 'None'
+[0.284s] Level 5:colcon.colcon_core.verb:set package 'simple_quadcopter_teleop' build argument 'catkin_cmake_args' from command line to 'None'
+[0.284s] Level 5:colcon.colcon_core.verb:set package 'simple_quadcopter_teleop' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.284s] DEBUG:colcon.colcon_core.verb:Building package 'simple_quadcopter_teleop' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop', 'merge_install': False, 'path': '/home/prathamkelkar/ros2_ws/src/simple_quadcopter_teleop', 'symlink_install': True, 'test_result_base': None}
+[0.284s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[0.285s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[0.286s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/prathamkelkar/ros2_ws/src/px4_msgs' with build type 'ament_cmake'
+[0.286s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/prathamkelkar/ros2_ws/src/px4_msgs'
+[0.289s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[0.289s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.289s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.294s] INFO:colcon.colcon_ros.task.ament_python.build:Building ROS package in '/home/prathamkelkar/ros2_ws/src/simple_quadcopter_teleop' with build type 'ament_python'
+[0.295s] Level 1:colcon.colcon_core.shell:create_environment_hook('simple_quadcopter_teleop', 'ament_prefix_path')
+[0.295s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/simple_quadcopter_teleop/hook/ament_prefix_path.ps1'
+[0.296s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/simple_quadcopter_teleop/hook/ament_prefix_path.dsv'
+[0.296s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/simple_quadcopter_teleop/hook/ament_prefix_path.sh'
+[0.297s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.297s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.308s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/prathamkelkar/ros2_ws/build/px4_msgs': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --build /home/prathamkelkar/ros2_ws/build/px4_msgs -- -j16 -l16
+[0.631s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/home/prathamkelkar/ros2_ws/src/simple_quadcopter_teleop'
+[0.631s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.631s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[1.342s] DEBUG:colcon.colcon_core.task.python.build:Available setuptools commands: register, install_data, build, build_ext, upload_docs, install, saveopts, install_headers, clean, install_scripts, update_catalog, bdist_rpm, test, rotate, bdist, bdist_wheel, bdist_egg, install_egg_info, setopt, init_catalog, sdist, develop, compile_catalog, build_py, dist_info, upload, install_lib, check, extract_messages, egg_info, build_clib, build_scripts, editable_wheel, alias, easy_install, symlink_data, bdist_dumb
+[1.750s] DEBUG:colcon.colcon_core.task.python.build:Available setuptools 'develop' options: --quiet, --local-snapshots-ok, --optimize, --multi-version, --upgrade, --no-deps, --allow-hosts, --version, --no-find-links, --force-installation-into-system-dir, --install-dir, --no-user-cfg, --index-url, --site-dirs, --egg-path, --exclude-scripts, --build-directory, --zip-ok, --always-copy, --dry-run, --prefix, --uninstall, --find-links, --verbose, --always-unzip, --help, --record, --user, --script-dir, --install-layout, --editable
+[1.753s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop/build --no-deps symlink_data
+[2.209s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/prathamkelkar/ros2_ws/build/px4_msgs' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --build /home/prathamkelkar/ros2_ws/build/px4_msgs -- -j16 -l16
+[2.230s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/prathamkelkar/ros2_ws/build/px4_msgs': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --install /home/prathamkelkar/ros2_ws/build/px4_msgs
+[2.496s] Level 1:colcon.colcon_core.shell:create_environment_hook('simple_quadcopter_teleop', 'pythonpath_develop')
+[2.497s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop/share/simple_quadcopter_teleop/hook/pythonpath_develop.ps1'
+[2.501s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop/share/simple_quadcopter_teleop/hook/pythonpath_develop.dsv'
+[2.507s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop/share/simple_quadcopter_teleop/hook/pythonpath_develop.sh'
+[2.527s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop' for CMake module files
+[2.531s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop' for CMake config files
+[2.539s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/lib'
+[2.540s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/bin'
+[2.540s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/lib/pkgconfig/simple_quadcopter_teleop.pc'
+[2.540s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/lib/python3.12/site-packages'
+[2.541s] Level 1:colcon.colcon_core.shell:create_environment_hook('simple_quadcopter_teleop', 'pythonpath')
+[2.542s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/simple_quadcopter_teleop/hook/pythonpath.ps1'
+[2.544s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/simple_quadcopter_teleop/hook/pythonpath.dsv'
+[2.546s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/simple_quadcopter_teleop/hook/pythonpath.sh'
+[2.548s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/bin'
+[2.548s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(simple_quadcopter_teleop)
+[2.549s] INFO:colcon.colcon_core.shell:Creating package script '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/simple_quadcopter_teleop/package.ps1'
+[2.556s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/simple_quadcopter_teleop/package.dsv'
+[2.559s] INFO:colcon.colcon_core.shell:Creating package script '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/simple_quadcopter_teleop/package.sh'
+[2.564s] INFO:colcon.colcon_core.shell:Creating package script '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/simple_quadcopter_teleop/package.bash'
+[2.568s] INFO:colcon.colcon_core.shell:Creating package script '/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/simple_quadcopter_teleop/package.zsh'
+[2.571s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /home/prathamkelkar/ros2_ws/build/simple_quadcopter_teleop/build --no-deps symlink_data
+[2.573s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/prathamkelkar/ros2_ws/install/simple_quadcopter_teleop/share/colcon-core/packages/simple_quadcopter_teleop)
+[2.797s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(px4_msgs)
+[2.798s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs' for CMake module files
+[2.799s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/prathamkelkar/ros2_ws/build/px4_msgs' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/jazzy DEBUGINFOD_URLS=https://debuginfod.ubuntu.com /usr/bin/cmake --install /home/prathamkelkar/ros2_ws/build/px4_msgs
+[2.800s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs' for CMake config files
+[2.830s] Level 1:colcon.colcon_core.shell:create_environment_hook('px4_msgs', 'cmake_prefix_path')
+[2.831s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/cmake_prefix_path.ps1'
+[2.832s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/cmake_prefix_path.dsv'
+[2.833s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/cmake_prefix_path.sh'
+[2.834s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs/lib'
+[2.834s] Level 1:colcon.colcon_core.shell:create_environment_hook('px4_msgs', 'ld_library_path_lib')
+[2.834s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/ld_library_path_lib.ps1'
+[2.835s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/ld_library_path_lib.dsv'
+[2.835s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/ld_library_path_lib.sh'
+[2.836s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs/bin'
+[2.836s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs/lib/pkgconfig/px4_msgs.pc'
+[2.836s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs/lib/python3.12/site-packages'
+[2.836s] Level 1:colcon.colcon_core.shell:create_environment_hook('px4_msgs', 'pythonpath')
+[2.837s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/pythonpath.ps1'
+[2.837s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/pythonpath.dsv'
+[2.838s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/pythonpath.sh'
+[2.839s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs/bin'
+[2.839s] INFO:colcon.colcon_core.shell:Creating package script '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/package.ps1'
+[2.840s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/package.dsv'
+[2.841s] INFO:colcon.colcon_core.shell:Creating package script '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/package.sh'
+[2.841s] INFO:colcon.colcon_core.shell:Creating package script '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/package.bash'
+[2.842s] INFO:colcon.colcon_core.shell:Creating package script '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/package.zsh'
+[2.842s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/prathamkelkar/ros2_ws/install/px4_msgs/share/colcon-core/packages/px4_msgs)
+[2.843s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(px4_msgs)
+[2.843s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs' for CMake module files
+[2.844s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs' for CMake config files
+[2.875s] Level 1:colcon.colcon_core.shell:create_environment_hook('px4_msgs', 'cmake_prefix_path')
+[2.876s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/cmake_prefix_path.ps1'
+[2.877s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/cmake_prefix_path.dsv'
+[2.877s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/cmake_prefix_path.sh'
+[2.878s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs/lib'
+[2.878s] Level 1:colcon.colcon_core.shell:create_environment_hook('px4_msgs', 'ld_library_path_lib')
+[2.879s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/ld_library_path_lib.ps1'
+[2.879s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/ld_library_path_lib.dsv'
+[2.879s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/ld_library_path_lib.sh'
+[2.880s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs/bin'
+[2.880s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs/lib/pkgconfig/px4_msgs.pc'
+[2.880s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs/lib/python3.12/site-packages'
+[2.881s] Level 1:colcon.colcon_core.shell:create_environment_hook('px4_msgs', 'pythonpath')
+[2.881s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/pythonpath.ps1'
+[2.881s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/pythonpath.dsv'
+[2.882s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/hook/pythonpath.sh'
+[2.883s] Level 1:colcon.colcon_core.environment:checking '/home/prathamkelkar/ros2_ws/install/px4_msgs/bin'
+[2.883s] INFO:colcon.colcon_core.shell:Creating package script '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/package.ps1'
+[2.884s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/package.dsv'
+[2.885s] INFO:colcon.colcon_core.shell:Creating package script '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/package.sh'
+[2.885s] INFO:colcon.colcon_core.shell:Creating package script '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/package.bash'
+[2.886s] INFO:colcon.colcon_core.shell:Creating package script '/home/prathamkelkar/ros2_ws/install/px4_msgs/share/px4_msgs/package.zsh'
+[2.886s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/prathamkelkar/ros2_ws/install/px4_msgs/share/colcon-core/packages/px4_msgs)
+[2.887s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[2.887s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[2.888s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '0'
+[2.889s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[2.902s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[2.902s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[2.903s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify2'
+[2.931s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[2.932s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/prathamkelkar/ros2_ws/install/local_setup.ps1'
+[2.934s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/prathamkelkar/ros2_ws/install/_local_setup_util_ps1.py'
+[2.935s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/prathamkelkar/ros2_ws/install/setup.ps1'
+[2.937s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/prathamkelkar/ros2_ws/install/local_setup.sh'
+[2.938s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/prathamkelkar/ros2_ws/install/_local_setup_util_sh.py'
+[2.939s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/prathamkelkar/ros2_ws/install/setup.sh'
+[2.940s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/prathamkelkar/ros2_ws/install/local_setup.bash'
+[2.940s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/prathamkelkar/ros2_ws/install/setup.bash'
+[2.941s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/prathamkelkar/ros2_ws/install/local_setup.zsh'
+[2.942s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/prathamkelkar/ros2_ws/install/setup.zsh'

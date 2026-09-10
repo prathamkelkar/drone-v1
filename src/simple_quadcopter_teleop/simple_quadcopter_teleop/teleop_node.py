@@ -51,7 +51,7 @@ class TeleopNode(Node):
             VehicleCommand, '/fmu/in/vehicle_command', qos)
 
         self.status_sub = self.create_subscription(
-            VehicleStatus, '/fmu/out/vehicle_status_v1', self.status_callback, qos)
+            VehicleStatus, '/fmu/out/vehicle_status_v4', self.status_callback, qos)
 
         # current commanded velocity (NED, m/s) and yaw rate (rad/s)
         self.vx = 0.0
