@@ -90,9 +90,9 @@ class PerceptionNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = PerceptionNode()  # or whatever your class is named
+    node = PerceptionNode()
     rclpy.spin(node)
-    node.destroy_node() # 
+    node.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':
