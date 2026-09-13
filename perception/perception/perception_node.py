@@ -5,7 +5,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPo
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-from vision_msgs.msg import Detection2DArray, ObjectHypothesisWithPose
+from vision_msgs.msg import Detection2D, ObjectHypothesisWithPose
 
 from ultralytics import YOLO
 import numpy as np
@@ -25,10 +25,10 @@ class PerceptionNode(Node):
         self.image_sub = self.create_subscription(Image, '/camera/image_raw', self.image_callback, qos)
 
         self.bridge = CvBridge()
-        self.model = YOLO('yolo8n.pt')
+        self.model = YOLO('yolov8n.pt')
 
         self.confidence_threshold = 0.5
-        self.detection_pub = self.create_publisher(Detection2DArray, '/detected_object', qos)
+        self.detection_pub = self.create_publisher(Detection2D, '/detected_object', qos)
 
 
 
@@ -39,8 +39,9 @@ class PerceptionNode(Node):
 
             results = self.model(cv_image, verbose=False, conf=self.confidence_threshold)
 
-            result = result[0]
+            result = results[0]
             best_conf = 0.0
+            best_box = None
 
             for box in result.boxes:
                 confidence = float(box.conf[0])
@@ -68,8 +69,8 @@ class PerceptionNode(Node):
             center_x = x1 + w / 2.0
             center_y = y1 + h / 2.0
 
-            # packaging the detection into a Detection2DArray message
-            detection_msg = Detection2DArray()
+            # packaging the detection into a Detection2D message
+            detection_msg = Detection2D()
             detection_msg.header = msg.header
             detection_msg.bbox.center.position.x = center_x
             detection_msg.bbox.center.position.y = center_y
@@ -86,3 +87,13 @@ class PerceptionNode(Node):
 
         except CvBridgeError as e:
             self.get_logger().error('CvBridge Error: {}'.format(e))
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = PerceptionNode()  # or whatever your class is named
+    rclpy.spin(node)
+    node.destroy_node() # 
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
