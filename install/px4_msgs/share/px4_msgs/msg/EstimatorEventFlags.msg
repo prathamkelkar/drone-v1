@@ -1,1 +1,0 @@
-/home/prathamkelkar/ros2_ws/src/px4_msgs/msg/EstimatorEventFlags.msg
