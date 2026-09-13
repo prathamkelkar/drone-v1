@@ -1,0 +1,2 @@
+[console_scripts]
+teleop_node = simple_quadcopter_teleop.teleop_node:main
