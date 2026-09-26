@@ -58,6 +58,9 @@ class Object_Localizer(Node):
             self.get_logger().warn('No camera info received yet -> skipping detection')
             return
 
+        if not self.tf_buffer.can_transform('world', self.camera_frame, rclpy.time.Time()):
+            return
+
         # center of the coordinates
         u = msg.bbox.center.position.x
         v = msg.bbox.center.position.y
@@ -74,9 +77,16 @@ class Object_Localizer(Node):
 
         X = (u - self.cx) * Z / self.fx
         Y = (v - self.cy) * Z / self.fy
-        
+
         camera_pose = PoseStamped()
 
+        # Use the detection's actual capture time, not time=0. Requesting
+        # "latest available" (time=0) pairs a possibly-stale detection with
+        # the freshest tf sample, which injects a position error proportional
+        # to drone_velocity * inference_latency once the drone is moving.
+        # tf's own interpolation between the two nearest recorded transforms
+        # (tf runs at 90Hz vs. ~8Hz detections) handles this correctly as
+        # long as the stamp falls inside the buffer's cache window.
         camera_pose.header.stamp = msg.header.stamp
         camera_pose.header.frame_id = self.camera_frame
         camera_pose.pose.position.x = X
@@ -85,11 +95,14 @@ class Object_Localizer(Node):
         camera_pose.pose.orientation.w = 1.0
 
         try:
+            # Small nonzero timeout gives tf a brief grace window if the
+            # exact/interpolatable transform hasn't landed yet, without
+            # blocking the executor for a full second like the original
+            # timeout=1.0 did (that's what caused the earlier deadlock).
             world_pose = self.tf_buffer.transform(
-                camera_pose, 'world', rclpy.duration.Duration(seconds=0.1)
+                camera_pose, 'world', timeout=rclpy.duration.Duration(seconds=0.05)
             )
             self.pose_pub.publish(world_pose)
-
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
             self.get_logger().warn(f'Transform failed: {e}')
 
