@@ -87,7 +87,7 @@ class Object_Localizer(Node):
         # tf's own interpolation between the two nearest recorded transforms
         # (tf runs at 90Hz vs. ~8Hz detections) handles this correctly as
         # long as the stamp falls inside the buffer's cache window.
-        camera_pose.header.stamp = msg.header.stamp
+        camera_pose.header.stamp = rclpy.time.Time().to_msg()
         camera_pose.header.frame_id = self.camera_frame
         camera_pose.pose.position.x = X
         camera_pose.pose.position.y = Y
