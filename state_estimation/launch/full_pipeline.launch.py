@@ -1,6 +1,8 @@
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess, TimerAction
+from launch.actions import ExecuteProcess, TimerAction, DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+import os
 
 def generate_launch_description():
 
@@ -14,9 +16,15 @@ def generate_launch_description():
         output='screen'
     )
 
+    px4_dir_arg = DeclareLaunchArgument(
+        'px4_dir',
+        default_value=os.path.expanduser('~/PX4-Autopilot'),
+        description='Path to PX4-Autopilot directory'
+    )
+
     px4_gazebo = ExecuteProcess(
         cmd=['make', 'px4_sitl', 'gz_x500_depth'],
-        cwd='/home/prathamkelkar/PX4-Autopilot',
+        cwd=[LaunchConfiguration('px4_dir')],
         output='screen'
     )
 
@@ -81,6 +89,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        px4_dir_arg,
         micro_xrce_agent,
         mavproxy,
         px4_gazebo,
