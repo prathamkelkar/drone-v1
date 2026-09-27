@@ -25,7 +25,7 @@ class PerceptionNode(Node):
         self.image_sub = self.create_subscription(Image, '/camera/image_raw', self.image_callback, qos)
 
         self.bridge = CvBridge()
-        self.model = YOLO('yolov8n.pt')
+        self.model = YOLO('yolo11n.pt')
 
         self.confidence_threshold = 0.5
         self.detection_pub = self.create_publisher(Detection2D, '/detected_object', qos)
