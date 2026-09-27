@@ -100,10 +100,22 @@ class KalmanFilter():
         self.Q = np.diag([0.01, 0.01, 0.01,
                           0.1, 0.1, 0.1])
 
+        # Velocity magnitude (m/s) that must be exceeded, downward, before
+        # the filter starts applying gravity in predict(). Tune based on
+        # your measurement noise floor — should be comfortably above the
+        # velocity jitter you see while the object is genuinely at rest.
+        self.VZ_THRESHOLD = 0.3
+        self.in_flight = False
+
     def initialize(self, z: np.ndarray):
         self.x[0:3] = z
         self.x[3:6] = 0.0
         self.P = np.eye(6) * 10.0
+        # Object starts assumed stationary/at rest — gravity is gated off
+        # until real downward motion is detected, so a resting object
+        # doesn't get dragged down by a freefall assumption that doesn't
+        # apply yet.
+        self.in_flight = False
 
     def predict(self, dt):
 
@@ -125,7 +137,14 @@ class KalmanFilter():
             [-dt],
         ])
 
-        u = self.g
+        # Check current velocity estimate to decide whether the object is
+        # actually in flight yet. vz more negative than -VZ_THRESHOLD means
+        # real downward motion has started (z is up in this frame).
+        vz = self.x[5, 0]
+        if not self.in_flight and vz < -self.VZ_THRESHOLD:
+            self.in_flight = True
+
+        u = self.g if self.in_flight else 0.0
 
         self.x = F @ self.x + B * u
 

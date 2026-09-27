@@ -88,6 +88,13 @@ def generate_launch_description():
         output='screen'
     )
 
+    kalman_filter = Node(
+        package='state_estimation',
+        executable='object_kalman_filter',
+        parameters=[{'use_sim_time': True}],
+        output='screen'
+    )
+
     return LaunchDescription([
         px4_dir_arg,
         micro_xrce_agent,
@@ -107,7 +114,8 @@ def generate_launch_description():
 
         TimerAction(period=25.0, actions=[
             perception_node,
-            object_localizer
+            object_localizer,
+            kalman_filter
         ])
     ])
 
