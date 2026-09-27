@@ -28,7 +28,8 @@ setup(
     entry_points={
         'console_scripts': [
             'object_localizer = state_estimation.object_localizer:main',
-            'px4_odom_to_tf = state_estimation.px4_odom_to_tf:main'
+            'px4_odom_to_tf = state_estimation.px4_odom_to_tf:main',
+            'object_kalman_filter = state_estimation.object_kalman_filter:main'
         ],
     },
 )

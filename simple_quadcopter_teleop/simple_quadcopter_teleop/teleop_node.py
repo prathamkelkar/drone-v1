@@ -59,7 +59,7 @@ class TeleopNode(Node):
         self.vz = 0.0
         self.yaw_rate = 0.0
 
-        self.speed = 1.0        # m/s per key press
+        self.speed = 0.2       # m/s per key press
         self.yaw_speed = 0.5    # rad/s per key press
 
         self.armed = False
