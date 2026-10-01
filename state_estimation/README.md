@@ -27,21 +27,23 @@ A constant-velocity, gravity-gated Kalman filter (6-state: position + velocity) 
 - Gravity is only applied to the prediction step once downward velocity exceeds a threshold (`VZ_THRESHOLD = 0.3` m/s) — i.e. the object is assumed at rest until it's actually observed falling.
 - Publishes `/estimation/object_state` (`nav_msgs/Odometry`) with position, velocity, and their covariances filled in; orientation and angular velocity are left as identity/zero (not meaningful for a tracked point-mass object).
 
-### `rotate_to_keep_in_center.py` — **not built, work in progress**
-A `Rotate` node intended to compute a pan/tilt correction to keep a detected object centered in frame. It is **not** registered as a console script in `setup.py` and is not referenced by any launch file, and as currently written it will fail if run:
-- `create_publisher()` and `create_subscription(... self.camera_info_callback)` are both called without the required arguments (message type / QoS or callback).
-- `rotate_callback` computes a `Vector3` and `return`s it instead of publishing it.
+### `rotate_command`
+Computes the yaw/pitch angle needed to bring the detected object to the image centre, from the pinhole model: `angle = atan((pixel - principal_point) / focal_length)`. A one-shot angle per detection, not a rate.
 
-Leave this file alone until it's finished — it isn't part of the running pipeline.
+- Subscribes `/detected_object` (`vision_msgs/Detection2D`) and `/camera/camera_info` (`sensor_msgs/CameraInfo`); skips detections until intrinsics have arrived.
+- Publishes `/rotate_command` (`geometry_msgs/Vector3`): `x` = roll (always 0), `y` = pitch (object below centre → positive), `z` = yaw (object right of centre → positive).
+- The `intercept` node consumes only the yaw (`z`) component to keep the target in view.
 
 ## Launch file: `launch/full_pipeline.launch.py`
 
-Brings up the full simulation + perception + state estimation pipeline in one command, staged with delays so each stage's dependencies are up before it starts:
+Brings up the full simulation + perception + state estimation + planning + intercept pipeline in one command, staged with delays so each stage's dependencies are up before it starts:
 
 1. **Immediately:** Micro XRCE-DDS Agent, MAVProxy, and PX4 SITL (`make px4_sitl gz_x500_depth` in `~/PX4-Autopilot`, overridable via the `px4_dir` launch argument).
 2. **At t=15s:** ROS↔Gazebo bridges for `/clock`, camera image, and camera info (remapped to `/camera/image_raw` and `/camera/camera_info`).
 3. **At t=20s:** a static `base_link -> camera_link` transform, and `px4_odom_to_tf`.
-4. **At t=25s:** `perception_node` (launched in its own terminal via `gnome-terminal`, since it needs to run from the workspace root to find `yolo11n.pt`), `object_localizer`, and `object_kalman_filter`.
+4. **At t=25s:** `perception_node` (launched in its own terminal via `gnome-terminal`), `object_localizer`, and `object_kalman_filter`.
+5. **At t=30s:** `rotate_command` and `plan_and_control`'s `trajectory_predictor_ellipsoid` (with `ballistic: False`, i.e. stationary-object test — change to `True` in the launch file for thrown objects).
+6. **At t=35s:** the `intercept` package's `offboard_inercept_node`, which arms, takes off and chases the intercept pose.
 
 ```bash
 ros2 launch state_estimation full_pipeline.launch.py
@@ -51,11 +53,12 @@ ros2 launch state_estimation full_pipeline.launch.py px4_dir:=/path/to/PX4-Autop
 
 Requires `gnome-terminal` to be installed (used to spawn the perception node in its own window). PX4 world/model target is fixed to `gz_x500_depth`.
 
-## Known cross-package inconsistency
+## Cross-package notes
 
-`plan_and_control`'s trajectory predictors subscribe to `/state_estimation/object_state`,
-but the topic actually published here is `/estimation/object_state`. Rename one
-side to match before wiring the two packages together end-to-end.
+`object_kalman_filter` publishes `/estimation/object_state`. The ellipsoid
+predictor in `plan_and_control` subscribes to that name, but the
+independent-axes predictor still uses `/state_estimation/object_state` (see
+its README).
 
 ## Dependencies
 
