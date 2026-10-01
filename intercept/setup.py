@@ -1,15 +1,12 @@
 from setuptools import find_packages, setup
-import os
-from glob import glob
 
-package_name = 'state_estimation'
+package_name = 'intercept'
 
 setup(
     name=package_name,
     version='0.0.0',
     packages=find_packages(exclude=['test']),
     data_files=[
-        (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
@@ -27,10 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'object_localizer = state_estimation.object_localizer:main',
-            'px4_odom_to_tf = state_estimation.px4_odom_to_tf:main',
-            'object_kalman_filter = state_estimation.object_kalman_filter:main',
-            'rotate_command = state_estimation.rotate_command:main'
+            'offboard_inercept_node = intercept.offboard_intercept_node:main'
         ],
     },
 )

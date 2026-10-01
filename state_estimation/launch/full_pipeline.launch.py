@@ -95,6 +95,13 @@ def generate_launch_description():
         output='screen'
     )
 
+    rotate_command = Node(
+        package='state_estimation',
+        executable='rotate_command',
+        parameters=[{'use_sim_time': True}],
+        output='screen'
+    )
+
     return LaunchDescription([
         px4_dir_arg,
         micro_xrce_agent,
@@ -115,7 +122,10 @@ def generate_launch_description():
         TimerAction(period=25.0, actions=[
             perception_node,
             object_localizer,
-            kalman_filter
+            kalman_filter,
+        ]),
+        TimerAction(period=30.0, actions=[
+            rotate_command
         ])
     ])
 

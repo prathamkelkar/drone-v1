@@ -10,7 +10,7 @@ from geometry_msgs.msg import Vector3
 from sensor_msgs.msg import CameraInfo
 
 
-class Rotate(Node):
+class RotateCommand(Node):
     """
     Computes the angle the camera/gimbal would need to turn, right now,
     to bring the detected object to the center of the frame.
@@ -30,7 +30,7 @@ class Rotate(Node):
     """
 
     def __init__(self):
-        super().__init__('rotate')
+        super().__init__('rotate_command')
 
         qos = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -84,7 +84,7 @@ class Rotate(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = Rotate()
+    node = RotateCommand()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
