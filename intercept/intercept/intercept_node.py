@@ -10,7 +10,8 @@ from px4_msgs.msg import (
     OffboardControlMode,
     TrajectorySetpoint,
     VehicleAttitude,
-    VehicleCommand
+    VehicleCommand,
+    VehicleOdometry
 )
 
 class OffboardInterceptNode(Node):
@@ -28,10 +29,24 @@ class OffboardInterceptNode(Node):
         self.target_position = None
         self.yaw_offset = 0.0
 
+        # Fully automatic mission: arm -> climb to hover height -> hold
+        # until a target arrives -> chase it. All positions are PX4 NED
+        # (z down), so hover at z = -takeoff_height.
+        self.declare_parameter('takeoff_height', 1.5)
+        self.declare_parameter('min_target_height', 0.3)  # never dive below this
+        self.takeoff_height = self.get_parameter('takeoff_height').value
+        self.min_target_height = self.get_parameter('min_target_height').value
+        self.position = None
+        self.hold_xy = None
+        self.hover_reached = False
+
         self.intercept_sub = self.create_subscription(
             PoseStamped, '/planning/intercept_ellipsoid', self.intercept_callback, qos)
         self.rotate_cmd_sub = self.create_subscription(
             Vector3, '/rotate_command', self.rotate_command_callback, 10)
+
+        self.odom_sub = self.create_subscription(
+            VehicleOdometry, '/fmu/out/vehicle_odometry', self.odom_callback, qos)
 
         self.attitude_sub = self.create_subscription(
             VehicleAttitude, '/fmu/out/vehicle_attitude', self.attitude_callback, qos)
@@ -80,6 +95,11 @@ class OffboardInterceptNode(Node):
             msg.pose.position.z,
         ])
 
+    def odom_callback(self, msg: VehicleOdometry):
+        self.position = np.array([msg.position[0], msg.position[1], msg.position[2]])
+        if self.hold_xy is None:
+            self.hold_xy = self.position[:2].copy()
+
     def attitude_callback(self, msg: VehicleAttitude):
         # PX4 VehicleAttitude.q is [w, x, y, z]
         q_scipy = np.array([msg.q[1], msg.q[2], msg.q[3], msg.q[0]])
@@ -103,15 +123,23 @@ class OffboardInterceptNode(Node):
         offboard_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self.offboard_mode_pub.publish(offboard_msg)
 
-        if self.target_position is None:
+        if self.position is None or self.hold_xy is None:
             return
 
+        hover_z = -self.takeoff_height
+        if not self.hover_reached and abs(self.position[2] - hover_z) < 0.3:
+            self.hover_reached = True
+            self.get_logger().info('Hover height reached — waiting for / chasing target')
+
+        if self.hover_reached and self.target_position is not None:
+            setpoint = self.target_position.copy()
+            # NED: don't command a point below min_target_height above ground
+            setpoint[2] = min(setpoint[2], -self.min_target_height)
+        else:
+            setpoint = np.array([self.hold_xy[0], self.hold_xy[1], hover_z])
+
         traj_msg = TrajectorySetpoint()
-        traj_msg.position = [
-            float(self.target_position[0]),
-            float(self.target_position[1]),
-            float(self.target_position[2])
-        ]
+        traj_msg.position = [float(setpoint[0]), float(setpoint[1]), float(setpoint[2])]
         traj_msg.velocity = [float('nan')] * 3
 
         if self.current_yaw is not None:
@@ -123,9 +151,8 @@ class OffboardInterceptNode(Node):
         self.trajectory_pub.publish(traj_msg)
 
         self.setpoint_counter += 1
-        has_target = self.target_position is not None
 
-        if not self.armed_and_offboard and has_target and self.setpoint_counter >= self.arm_after_n_setpoints:
+        if not self.armed_and_offboard and self.setpoint_counter >= self.arm_after_n_setpoints:
             self.arm_and_offboard()
             self.armed_and_offboard = True
 

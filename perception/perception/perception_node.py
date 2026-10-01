@@ -27,7 +27,11 @@ class PerceptionNode(Node):
         self.bridge = CvBridge()
         self.model = YOLO('yolo11n.pt')
 
-        self.confidence_threshold = 0.5
+        self.confidence_threshold = 0.25
+        # The drone's own propellers show up in the frame and get
+        # classified as e.g. "airplane" with high confidence — only
+        # accept the class we're actually tracking.
+        self.target_class = 'sports ball'
         self.detection_pub = self.create_publisher(Detection2D, '/detected_object', qos)
 
 
@@ -47,6 +51,9 @@ class PerceptionNode(Node):
                 confidence = float(box.conf[0])
 
                 if confidence < self.confidence_threshold:
+                    continue
+
+                if self.model.names[int(box.cls[0])] != self.target_class:
                     continue
 
                 if confidence > best_conf:

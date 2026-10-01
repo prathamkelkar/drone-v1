@@ -59,7 +59,18 @@ def generate_launch_description():
     static_tf = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
-        arguments=['0.1', '0', '-0.05', '0', '0', '0', 'base_link', 'camera_link'],
+        # base_link is PX4's FRD body frame (x fwd, y right, z down). The
+        # localizer treats camera_link as an optical frame (x right, y down,
+        # z forward/depth), so rotate optical -> FRD: x_opt=y_body,
+        # y_opt=z_body, z_opt=x_body  (120 deg about (1,1,1)).
+        arguments=[
+            # Mount from PX4's x500_depth/OakD-Lite model.sdf: camera at
+            # (0.12, 0.03, 0.242) + IMX214 sensor offset (0.012, -0.03, 0.019)
+            # in FLU -> (0.132, 0, 0.261 up) -> FRD z = -0.261.
+            '--x', '0.132', '--y', '0', '--z', '-0.261',
+            '--qx', '0.5', '--qy', '0.5', '--qz', '0.5', '--qw', '0.5',
+            '--frame-id', 'base_link', '--child-frame-id', 'camera_link',
+        ],
         parameters=[{'use_sim_time': True}],
         output='screen'
     )
@@ -105,8 +116,17 @@ def generate_launch_description():
     trajectory_predictor = Node(
         package='plan_and_control',
         executable='trajectory_predictor_ellipsoid',
-        parameters=[{'use_sim_time': True}],
+        # ballistic=False: stationary-object test (fly to the object's
+        # position). Set True for thrown/falling objects.
+        parameters=[{'use_sim_time': True, 'ballistic': False}],
         output='screen'
+    )
+
+    interceptor = Node(
+            package='intercept',
+            executable='offboard_inercept_node',
+            parameters=[{'use_sim_time': True}],
+            output='screen'
     )
 
     return LaunchDescription([
@@ -131,9 +151,13 @@ def generate_launch_description():
             object_localizer,
             kalman_filter,
         ]),
-        TimerAction(period=35.0, actions=[
+        TimerAction(period=30.0, actions=[
             rotate_command,
             trajectory_predictor
-        ])
+        ]),
+        TimerAction(period=35.0, actions=[
+            interceptor
+        ]),
+        
     ])
 

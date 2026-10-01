@@ -210,6 +210,9 @@ class TrajectoryPredictorNode(Node):
         self.declare_parameter('v_max_v', 3.0)
         self.declare_parameter('h_target', 0.0)
         self.declare_parameter('intercept_mode', 'ellipsoid')  # 'ellipsoid' or 'independent_axes'
+        # False = object is stationary: just publish its current position
+        # as the target instead of predicting a ballistic fall.
+        self.declare_parameter('ballistic', True)
 
         self.solver = InterceptSolver(
             a_max_h=self.get_parameter('a_max_h').value,
@@ -244,10 +247,11 @@ class TrajectoryPredictorNode(Node):
         self.get_logger().info('trajectory_predictor_node started')
 
     def drone_odom_callback(self, msg: VehicleOdometry):
+        # PX4 is NED (z down); the solver works with z up.
         self.drone_position = np.array([
             msg.position[0],
             msg.position[1],
-            msg.position[2],
+            -msg.position[2],
         ])
 
     def object_state_callback(self, msg: Odometry):
@@ -255,18 +259,30 @@ class TrajectoryPredictorNode(Node):
             self.get_logger().warn('No drone position yet — skipping solve')
             return
 
+        # Object state is in the NED 'world' frame; flip z to z-up.
         p0 = np.array([
             msg.pose.pose.position.x,
             msg.pose.pose.position.y,
-            msg.pose.pose.position.z,
+            -msg.pose.pose.position.z,
         ])
         v0 = np.array([
             msg.twist.twist.linear.x,
             msg.twist.twist.linear.y,
-            msg.twist.twist.linear.z,
+            -msg.twist.twist.linear.z,
         ])
 
-        t_star, p_intercept = self.solver.solve(p0, v0, self.drone_position)
+        if not self.get_parameter('ballistic').value:
+            # Stationary object: fly straight to where it is.
+            delta = p0 - self.drone_position
+            dist = float(np.linalg.norm(delta))
+            direction = delta / dist if dist > 1e-9 else np.array([0.0, 0.0, 1.0])
+            t_star = self.solver.flight_time(
+                dist,
+                self.solver.effective_accel(direction),
+                self.solver.effective_velocity(direction))
+            p_intercept = p0
+        else:
+            t_star, p_intercept = self.solver.solve(p0, v0, self.drone_position)
 
         # Log the independent-axes estimate alongside as a comparison
         # point, without using it for the actual published command.
@@ -291,7 +307,7 @@ class TrajectoryPredictorNode(Node):
         out.header = msg.header
         out.pose.position.x = float(p_intercept[0])
         out.pose.position.y = float(p_intercept[1])
-        out.pose.position.z = float(p_intercept[2])
+        out.pose.position.z = float(-p_intercept[2])  # back to NED (z down)
         out.pose.orientation.w = 1.0
         self.intercept_pub.publish(out)
 

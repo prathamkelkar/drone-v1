@@ -24,7 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'offboard_inercept_node = intercept.offboard_intercept_node:main'
+            'offboard_inercept_node = intercept.intercept_node:main'
         ],
     },
 )
