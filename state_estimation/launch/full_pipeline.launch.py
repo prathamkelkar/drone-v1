@@ -102,6 +102,13 @@ def generate_launch_description():
         output='screen'
     )
 
+    trajectory_predictor = Node(
+        package='plan_and_control',
+        executable='trajectory_predictor_ellipsoid',
+        parameters=[{'use_sim_time': True}],
+        output='screen'
+    )
+
     return LaunchDescription([
         px4_dir_arg,
         micro_xrce_agent,
@@ -124,8 +131,9 @@ def generate_launch_description():
             object_localizer,
             kalman_filter,
         ]),
-        TimerAction(period=30.0, actions=[
-            rotate_command
+        TimerAction(period=35.0, actions=[
+            rotate_command,
+            trajectory_predictor
         ])
     ])
 

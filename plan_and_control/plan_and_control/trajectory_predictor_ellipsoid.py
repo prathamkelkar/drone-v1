@@ -34,8 +34,10 @@ from scipy.optimize import brentq
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
+from px4_msgs.msg import VehicleOdometry
 
 
 class InterceptSolver:
@@ -220,25 +222,32 @@ class TrajectoryPredictorNode(Node):
         self.drone_position = None
 
         self.object_state_sub = self.create_subscription(
-            Odometry, '/state_estimation/object_state', self.object_state_callback, 10)
+            Odometry, '/estimation/object_state', self.object_state_callback,
+            QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
+                       durability=DurabilityPolicy.VOLATILE,
+                       history=HistoryPolicy.KEEP_LAST,
+                       depth=10))
 
-        # Adjust to whatever topic actually carries the drone's own
-        # current position in your world frame (e.g. bridged from
-        # /fmu/out/vehicle_odometry via your px4_odom_to_tf node, or
-        # subscribe to vehicle_odometry directly and transform here).
+        # PX4 publishes best-effort; match px4_odom_to_tf's QoS.
+        px4_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1
+        )
         self.drone_odom_sub = self.create_subscription(
-            Odometry, '/fmu/out/vehicle_odometry', self.drone_odom_callback, 10)
+            VehicleOdometry, '/fmu/out/vehicle_odometry', self.drone_odom_callback, px4_qos)
 
         self.intercept_pub = self.create_publisher(
             PoseStamped, '/planning/intercept_ellipsoid', 10)
 
         self.get_logger().info('trajectory_predictor_node started')
 
-    def drone_odom_callback(self, msg: Odometry):
+    def drone_odom_callback(self, msg: VehicleOdometry):
         self.drone_position = np.array([
-            msg.pose.pose.position.x,
-            msg.pose.pose.position.y,
-            msg.pose.pose.position.z,
+            msg.position[0],
+            msg.position[1],
+            msg.position[2],
         ])
 
     def object_state_callback(self, msg: Odometry):
