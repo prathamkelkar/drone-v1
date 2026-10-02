@@ -44,10 +44,13 @@ class InterceptSolver:
     """Pure math — no ROS dependencies, easy to unit test standalone."""
 
     def __init__(self, g=9.81,
-                 a_max_h=4.0, a_max_v=2.0,
-                 v_max_h=5.0, v_max_v=3.0,
-                 h_target=0.0):
+                 a_max_h=5.0, a_max_v=2.0,
+                 v_max_h=20.0, v_max_v=3.0,
+                 h_target=0.0, max_time=5.0):
         self.g = g
+        # Search horizon (s) when the object never lands (g == 0, i.e. a
+        # constant-velocity object); with gravity the horizon is t_ground.
+        self.max_time = max_time
         self.a_max_h = a_max_h   # max horizontal acceleration, m/s^2
         self.a_max_v = a_max_v   # max vertical acceleration, m/s^2
         self.v_max_h = v_max_h   # max horizontal cruise speed, m/s
@@ -60,6 +63,13 @@ class InterceptSolver:
         py = p0[1] + v0[1] * t
         pz = p0[2] + v0[2] * t - 0.5 * self.g * t**2
         return np.array([px, py, pz])
+
+    def time_horizon(self, pz0, vz0):
+        """Upper bound of the intercept search: the landing time for a
+        ballistic object, or a fixed horizon for a constant-velocity one."""
+        if self.g == 0.0:
+            return self.max_time
+        return self.compute_t_ground(pz0, vz0)
 
     def compute_t_ground(self, pz0, vz0):
         """Analytic time the object crosses h_target, solving the
@@ -141,7 +151,7 @@ class InterceptSolver:
     def solve(self, p0, v0, drone_start):
         """Returns (t_star, p_intercept) or (None, None) if no
         feasible intercept exists within the object's flight time."""
-        t_ground = self.compute_t_ground(p0[2], v0[2])
+        t_ground = self.time_horizon(p0[2], v0[2])
         if t_ground is None:
             return None, None
 
@@ -180,7 +190,7 @@ class InterceptSolver:
         return t_drone - t
 
     def solve_independent_axes(self, p0, v0, drone_start):
-        t_ground = self.compute_t_ground(p0[2], v0[2])
+        t_ground = self.time_horizon(p0[2], v0[2])
         if t_ground is None:
             return None, None
 
@@ -210,11 +220,22 @@ class TrajectoryPredictorNode(Node):
         self.declare_parameter('v_max_v', 3.0)
         self.declare_parameter('h_target', 0.0)
         self.declare_parameter('intercept_mode', 'ellipsoid')  # 'ellipsoid' or 'independent_axes'
-        # False = object is stationary: just publish its current position
-        # as the target instead of predicting a ballistic fall.
-        self.declare_parameter('ballistic', True)
+        # How the object moves: 'ballistic' (gravity only, thrown/dropped),
+        # 'constant_velocity' (no gravity, e.g. a ball gliding sideways) or
+        # 'static' (just fly to where it is now).
+        self.declare_parameter('object_model', 'ballistic')
 
         self.solver = InterceptSolver(
+            a_max_h=self.get_parameter('a_max_h').value,
+            a_max_v=self.get_parameter('a_max_v').value,
+            v_max_h=self.get_parameter('v_max_h').value,
+            v_max_v=self.get_parameter('v_max_v').value,
+            h_target=self.get_parameter('h_target').value,
+        )
+
+        # Same drone limits, but g=0 so the object keeps its velocity.
+        self.solver_cv = InterceptSolver(
+            g=0.0,
             a_max_h=self.get_parameter('a_max_h').value,
             a_max_v=self.get_parameter('a_max_v').value,
             v_max_h=self.get_parameter('v_max_h').value,
@@ -271,29 +292,32 @@ class TrajectoryPredictorNode(Node):
             -msg.twist.twist.linear.z,
         ])
 
-        if not self.get_parameter('ballistic').value:
+        model = self.get_parameter('object_model').value
+        solver = self.solver_cv if model == 'constant_velocity' else self.solver
+
+        if model == 'static':
             # Stationary object: fly straight to where it is.
             delta = p0 - self.drone_position
             dist = float(np.linalg.norm(delta))
             direction = delta / dist if dist > 1e-9 else np.array([0.0, 0.0, 1.0])
-            t_star = self.solver.flight_time(
+            t_star = solver.flight_time(
                 dist,
-                self.solver.effective_accel(direction),
-                self.solver.effective_velocity(direction))
+                solver.effective_accel(direction),
+                solver.effective_velocity(direction))
             p_intercept = p0
         else:
-            t_star, p_intercept = self.solver.solve(p0, v0, self.drone_position)
+            t_star, p_intercept = solver.solve(p0, v0, self.drone_position)
 
         # Log the independent-axes estimate alongside as a comparison
         # point, without using it for the actual published command.
-        t_star_alt, _ = self.solver.solve_independent_axes(p0, v0, self.drone_position)
+        t_star_alt, _ = solver.solve_independent_axes(p0, v0, self.drone_position)
         if t_star is not None and t_star_alt is not None:
             self.get_logger().debug(
                 f'ellipsoid t*={t_star:.3f}s  independent_axes t*={t_star_alt:.3f}s'
             )
 
         if self.get_parameter('intercept_mode').value == 'independent_axes':
-            t_star, p_intercept = self.solver.solve_independent_axes(p0, v0, self.drone_position)
+            t_star, p_intercept = solver.solve_independent_axes(p0, v0, self.drone_position)
 
         if t_star is None:
             self.get_logger().warn('No feasible intercept found')

@@ -35,6 +35,11 @@ class Object_Localizer(Node):
 
         self.pose_pub = self.create_publisher(PoseStamped, 'estimation/pose_object_raw', qos)
 
+        # True: transform each detection using the drone's pose at the moment
+        # the image was captured. False: use the latest pose (old behaviour);
+        # kept so the two can be compared.
+        self.declare_parameter('use_image_stamp', True)
+
         # buffer stores and manages all transforms over time
         self.tf_buffer = tf2_ros.Buffer()
         # listener receives those transformations from the network and feeds them into the buffer
@@ -58,7 +63,24 @@ class Object_Localizer(Node):
             self.get_logger().warn('No camera info received yet -> skipping detection')
             return
 
-        if not self.tf_buffer.can_transform('world', self.camera_frame, rclpy.time.Time()):
+        # The detection carries the image's capture time (perception copies
+        # the image header). Detections arrive ~0.2-0.3 s after capture, so
+        # transforming with the *latest* drone pose would inject an error of
+        # about drone_velocity * latency (plus a tilt error). Ask tf for the
+        # pose at capture time instead; it interpolates between the two
+        # nearest recorded transforms.
+        query_time = rclpy.time.Time()  # 0 = latest available
+        if self.get_parameter('use_image_stamp').value:
+            capture_time = rclpy.time.Time.from_msg(msg.header.stamp)
+            if self.tf_buffer.can_transform('world', self.camera_frame, capture_time):
+                query_time = capture_time
+            else:
+                # capture time not (yet / any longer) covered by the tf buffer
+                self.get_logger().warn(
+                    'No tf at image capture time, using latest pose instead',
+                    throttle_duration_sec=2.0)
+
+        if not self.tf_buffer.can_transform('world', self.camera_frame, query_time):
             return
 
         # center of the coordinates
@@ -80,14 +102,7 @@ class Object_Localizer(Node):
 
         camera_pose = PoseStamped()
 
-        # Use the detection's actual capture time, not time=0. Requesting
-        # "latest available" (time=0) pairs a possibly-stale detection with
-        # the freshest tf sample, which injects a position error proportional
-        # to drone_velocity * inference_latency once the drone is moving.
-        # tf's own interpolation between the two nearest recorded transforms
-        # (tf runs at 90Hz vs. ~8Hz detections) handles this correctly as
-        # long as the stamp falls inside the buffer's cache window.
-        camera_pose.header.stamp = rclpy.time.Time().to_msg()
+        camera_pose.header.stamp = query_time.to_msg()
         camera_pose.header.frame_id = self.camera_frame
         camera_pose.pose.position.x = X
         camera_pose.pose.position.y = Y

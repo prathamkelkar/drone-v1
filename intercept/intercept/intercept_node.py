@@ -32,7 +32,7 @@ class OffboardInterceptNode(Node):
         # Fully automatic mission: arm -> climb to hover height -> hold
         # until a target arrives -> chase it. All positions are PX4 NED
         # (z down), so hover at z = -takeoff_height.
-        self.declare_parameter('takeoff_height', 1.5)
+        self.declare_parameter('takeoff_height', 4.0)
         self.declare_parameter('min_target_height', 0.3)  # never dive below this
         self.takeoff_height = self.get_parameter('takeoff_height').value
         self.min_target_height = self.get_parameter('min_target_height').value

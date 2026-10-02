@@ -12,7 +12,10 @@ class Object_Kalman_Filter(Node):
     def __init__(self):
         super().__init__('object_kalman_filter')
 
-        self.kf = KalmanFilter()
+        # 9.81 for thrown/dropped objects; 0.0 for objects that don't fall
+        # (static or constant-velocity), so noise can never switch gravity on.
+        self.declare_parameter('gravity', 9.81)
+        self.kf = KalmanFilter(g=self.get_parameter('gravity').value)
 
         qos = QoSProfile(
                 reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -92,16 +95,17 @@ class Object_Kalman_Filter(Node):
 
 
 class KalmanFilter():
-    def __init__(self):
+    def __init__(self, g=9.81):
 
-        self.g = 9.81
+        self.g = g
         self.x = np.zeros((6, 1))
         self.P = np.eye(6) * 10
         self.Q = np.diag([0.01, 0.01, 0.01,
                           0.1, 0.1, 0.1])
 
         # Velocity magnitude (m/s) that must be exceeded, downward, before
-        # the filter starts applying gravity in predict(). Tune based on
+        # the filter starts applying gravity in predict(). The world frame
+        # is PX4 NED, so z points DOWN and falling means positive vz. Tune based on
         # your measurement noise floor — should be comfortably above the
         # velocity jitter you see while the object is genuinely at rest.
         self.VZ_THRESHOLD = 0.3
@@ -110,7 +114,12 @@ class KalmanFilter():
     def initialize(self, z: np.ndarray):
         self.x[0:3] = z
         self.x[3:6] = 0.0
-        self.P = np.eye(6) * 10.0
+        # Position is known to ~0.1 m from the first detection, but velocity
+        # is unknown (could be a fast throw): a large velocity variance makes
+        # the filter lock onto the velocity within 1-2 updates. The old
+        # eye(6)*10 made it need ~5+ updates, far more than a ball in view
+        # for ~1 s at ~5-8 Hz ever provides.
+        self.P = np.diag([0.1, 0.1, 0.1, 100.0, 100.0, 100.0])
         # Object starts assumed stationary/at rest — gravity is gated off
         # until real downward motion is detected, so a resting object
         # doesn't get dragged down by a freefall assumption that doesn't
@@ -128,20 +137,21 @@ class KalmanFilter():
             [0, 0, 0, 0,  0,  1 ],
         ])
 
+        # NED: z is down, so gravity accelerates the object toward +z.
         B = np.array([
             [0],
             [0],
-            [-0.5 * dt**2],
+            [0.5 * dt**2],
             [0],
             [0],
-            [-dt],
+            [dt],
         ])
 
         # Check current velocity estimate to decide whether the object is
-        # actually in flight yet. vz more negative than -VZ_THRESHOLD means
-        # real downward motion has started (z is up in this frame).
+        # actually in flight yet. vz greater than +VZ_THRESHOLD means
+        # real downward motion has started (z is down in this NED frame).
         vz = self.x[5, 0]
-        if not self.in_flight and vz < -self.VZ_THRESHOLD:
+        if not self.in_flight and vz > self.VZ_THRESHOLD:
             self.in_flight = True
 
         u = self.g if self.in_flight else 0.0

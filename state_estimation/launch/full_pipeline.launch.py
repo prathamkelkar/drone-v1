@@ -102,7 +102,8 @@ def generate_launch_description():
     kalman_filter = Node(
         package='state_estimation',
         executable='object_kalman_filter',
-        parameters=[{'use_sim_time': True}],
+        # gravity 0.0 for the constant-velocity test; 9.81 for thrown objects
+        parameters=[{'use_sim_time': True, 'gravity': 0.0}],
         output='screen'
     )
 
@@ -116,9 +117,11 @@ def generate_launch_description():
     trajectory_predictor = Node(
         package='plan_and_control',
         executable='trajectory_predictor_ellipsoid',
-        # ballistic=False: stationary-object test (fly to the object's
-        # position). Set True for thrown/falling objects.
-        parameters=[{'use_sim_time': True, 'ballistic': False}],
+        # h_target: height (above the drone's start point, z-up) at which the
+        # ball is intercepted. Keep it equal to the interceptor's
+        # takeoff_height (4.0) so the drone catches the ball at hover height
+        # instead of having to descend to the ground in the ball's flight time.
+        parameters=[{'use_sim_time': True, 'object_model': 'constant_velocity', 'h_target': 4.0}],
         output='screen'
     )
 
