@@ -1,3 +1,4 @@
+import os
 import sys
 import rclpy
 from rclpy.node import Node
@@ -25,13 +26,21 @@ class PerceptionNode(Node):
         self.image_sub = self.create_subscription(Image, '/camera/image_raw', self.image_callback, qos)
 
         self.bridge = CvBridge()
-        self.model = YOLO('yolo11n.pt')
+        # best.pt: yolo11n fine-tuned on classes 'ball', 'carton',
+        # 'plastic_bottle'. Absolute path so the node works from any cwd.
+        self.declare_parameter('model_path', os.path.expanduser('~/ros2_ws/best.pt'))
+        self.model = YOLO(self.get_parameter('model_path').value)
 
         self.confidence_threshold = 0.25
-        # The drone's own propellers show up in the frame and get
-        # classified as e.g. "airplane" with high confidence — only
-        # accept the class we're actually tracking.
-        self.target_class = 'sports ball'
+        # The drone's own propellers show up in the frame and can be
+        # misclassified with high confidence — only accept the class we're
+        # actually tracking. Must be one of self.model.names.
+        self.declare_parameter('target_class', 'plastic_bottle')
+        self.target_class = self.get_parameter('target_class').value
+        if self.target_class not in self.model.names.values():
+            raise ValueError(f'target_class {self.target_class!r} not in model classes '
+                             f'{list(self.model.names.values())}')
+        self.get_logger().info(f'Tracking {self.target_class!r} with {self.get_parameter("model_path").value}')
         self.detection_pub = self.create_publisher(Detection2D, '/detected_object', qos)
 
 

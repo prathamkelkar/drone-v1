@@ -121,7 +121,8 @@ def generate_launch_description():
         # ball is intercepted. Keep it equal to the interceptor's
         # takeoff_height (4.0) so the drone catches the ball at hover height
         # instead of having to descend to the ground in the ball's flight time.
-        parameters=[{'use_sim_time': True, 'object_model': 'constant_velocity', 'h_target': 4.0}],
+        parameters=[{'use_sim_time': True, 'object_model': 'constant_velocity', 'h_target': 4.0,
+                     'intercept_mode': 'independent_axes'}],
         output='screen'
     )
 
@@ -161,6 +162,5 @@ def generate_launch_description():
         TimerAction(period=35.0, actions=[
             interceptor
         ]),
-        
     ])
 

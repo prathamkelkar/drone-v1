@@ -214,9 +214,9 @@ class TrajectoryPredictorNode(Node):
         # (MPC_ACC_HOR_MAX, MPC_ACC_UP_MAX/MPC_ACC_DOWN_MAX,
         # MPC_XY_VEL_MAX, MPC_Z_VEL_MAX_UP/DN) or empirical
         # step-response testing in Gazebo.
-        self.declare_parameter('a_max_h', 4.0)
-        self.declare_parameter('a_max_v', 2.0)
-        self.declare_parameter('v_max_h', 5.0)
+        self.declare_parameter('a_max_h', 5.0)
+        self.declare_parameter('a_max_v', 5.0)
+        self.declare_parameter('v_max_h', 20.0)
         self.declare_parameter('v_max_v', 3.0)
         self.declare_parameter('h_target', 0.0)
         self.declare_parameter('intercept_mode', 'ellipsoid')  # 'ellipsoid' or 'independent_axes'
