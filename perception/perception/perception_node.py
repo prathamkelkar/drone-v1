@@ -10,6 +10,7 @@ from vision_msgs.msg import Detection2D, ObjectHypothesisWithPose
 
 from ultralytics import YOLO
 import numpy as np
+import torch
 
 
 class PerceptionNode(Node):
@@ -31,6 +32,21 @@ class PerceptionNode(Node):
         self.declare_parameter('model_path', os.path.expanduser('~/ros2_ws/best.pt'))
         self.model = YOLO(self.get_parameter('model_path').value)
 
+        # 'cuda:0' runs YOLO on the GPU; falls back to CPU if CUDA isn't
+        # available so the node still works on machines without a GPU.
+        self.declare_parameter('device', 'cuda:0')
+        self.device = self.get_parameter('device').value
+        if self.device.startswith('cuda') and not torch.cuda.is_available():
+            self.get_logger().warn(f'device {self.device!r} requested but CUDA is unavailable, using cpu')
+            self.device = 'cpu'
+        self.model.to(self.device)
+        # FP16 is ~2x faster on RTX GPUs; not supported on CPU
+        self.precision = 16 if self.device.startswith('cuda') else 32
+        if self.precision == 16:
+            self.get_logger().info(f'YOLO running on GPU: {torch.cuda.get_device_name(self.device)}')
+        else:
+            self.get_logger().info('YOLO running on CPU')
+
         self.confidence_threshold = 0.25
         # The drone's own propellers show up in the frame and can be
         # misclassified with high confidence — only accept the class we're
@@ -50,7 +66,8 @@ class PerceptionNode(Node):
             cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
             self.get_logger().info('Received image of size: {}x{}'.format(cv_image.shape[1], cv_image.shape[0]))
 
-            results = self.model(cv_image, verbose=False, conf=self.confidence_threshold)
+            results = self.model(cv_image, verbose=False, conf=self.confidence_threshold,
+                                 device=self.device, quantize=self.precision)
 
             result = results[0]
             best_conf = 0.0

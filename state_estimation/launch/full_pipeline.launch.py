@@ -82,13 +82,17 @@ def generate_launch_description():
         output='screen'
     )
 
-    perception_node = ExecuteProcess(
-        cmd=[
-            'gnome-terminal', '--', 'bash', '-c',
-            'source ~/ros2_ws/install/setup.bash && '
-            'ros2 run perception perception_node --ros-args -p use_sim_time:=true; '
-            'exec bash'
-        ],
+    perception_device_arg = DeclareLaunchArgument(
+        'perception_device',
+        default_value='cuda:0',
+        description="Device for YOLO inference: 'cuda:0' (GPU) or 'cpu'"
+    )
+
+    perception_node = Node(
+        package='perception',
+        executable='perception_node',
+        parameters=[{'use_sim_time': True,
+                     'device': LaunchConfiguration('perception_device')}],
         output='screen'
     )
 
@@ -135,6 +139,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         px4_dir_arg,
+        perception_device_arg,
         micro_xrce_agent,
         mavproxy,
         px4_gazebo,
