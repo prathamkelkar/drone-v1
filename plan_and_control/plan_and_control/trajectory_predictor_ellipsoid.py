@@ -148,25 +148,33 @@ class InterceptSolver:
 
         return t_drone - t
 
+    def _earliest_root(self, g, t_end, args, samples=200):
+        """Earliest t in (0, t_end] with g(t) <= 0, i.e. the first moment the
+        drone can be where the object is. g is sampled on a grid first:
+        bracketing only the two ends of the window misses intercepts that are
+        feasible in the middle but not at the end (e.g. a falling object that
+        the drone can reach early on but not once it has dropped further)."""
+        ts = np.linspace(1e-6, t_end, samples)
+        prev_t, prev_g = ts[0], g(ts[0], *args)
+        if prev_g <= 0.0:
+            return prev_t
+        for t in ts[1:]:
+            gt = g(t, *args)
+            if gt <= 0.0:
+                return brentq(g, prev_t, t, args=args)
+            prev_t, prev_g = t, gt
+        return None
+
     def solve(self, p0, v0, drone_start):
-        """Returns (t_star, p_intercept) or (None, None) if no
-        feasible intercept exists within the object's flight time."""
+        """Returns (t_star, p_intercept) for the earliest feasible intercept,
+        or (None, None) if none exists within the object's flight time."""
         t_ground = self.time_horizon(p0[2], v0[2])
         if t_ground is None:
             return None, None
-
-        try:
-            t_star = brentq(
-                self.g_func, 1e-6, t_ground,
-                args=(p0, v0, drone_start)
-            )
-        except ValueError:
-            # g_func doesn't change sign across the bracket — no
-            # feasible intercept with current drone capability.
+        t_star = self._earliest_root(self.g_func, t_ground, (p0, v0, drone_start))
+        if t_star is None:
             return None, None
-
-        p_intercept = self.p_object(t_star, p0, v0)
-        return t_star, p_intercept
+        return t_star, self.p_object(t_star, p0, v0)
 
     # --- Independent-axes comparison model ------------------------------
     # NOTE: does NOT correspond to a straight-line path — axes that
@@ -193,17 +201,11 @@ class InterceptSolver:
         t_ground = self.time_horizon(p0[2], v0[2])
         if t_ground is None:
             return None, None
-
-        try:
-            t_star = brentq(
-                self.g_func_independent_axes, 1e-6, t_ground,
-                args=(p0, v0, drone_start)
-            )
-        except ValueError:
+        t_star = self._earliest_root(self.g_func_independent_axes, t_ground,
+                                     (p0, v0, drone_start))
+        if t_star is None:
             return None, None
-
-        p_intercept = self.p_object(t_star, p0, v0)
-        return t_star, p_intercept
+        return t_star, self.p_object(t_star, p0, v0)
 
 
 class TrajectoryPredictorNode(Node):

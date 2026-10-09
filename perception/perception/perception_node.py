@@ -27,9 +27,10 @@ class PerceptionNode(Node):
         self.image_sub = self.create_subscription(Image, '/camera/image_raw', self.image_callback, qos)
 
         self.bridge = CvBridge()
-        # best.pt: yolo11n fine-tuned on classes 'ball', 'carton',
-        # 'plastic_bottle'. Absolute path so the node works from any cwd.
-        self.declare_parameter('model_path', os.path.expanduser('~/ros2_ws/best.pt'))
+        # Stock YOLO11n (80 COCO classes). Absolute path so the node works
+        # from any cwd. ~/ros2_ws/best.pt (fine-tuned: 'ball', 'carton',
+        # 'plastic_bottle') can be selected with the model_path parameter.
+        self.declare_parameter('model_path', os.path.expanduser('~/ros2_ws/yolo11n.pt'))
         self.model = YOLO(self.get_parameter('model_path').value)
 
         # 'cuda:0' runs YOLO on the GPU; falls back to CPU if CUDA isn't
@@ -51,7 +52,7 @@ class PerceptionNode(Node):
         # The drone's own propellers show up in the frame and can be
         # misclassified with high confidence — only accept the class we're
         # actually tracking. Must be one of self.model.names.
-        self.declare_parameter('target_class', 'plastic_bottle')
+        self.declare_parameter('target_class', 'sports ball')
         self.target_class = self.get_parameter('target_class').value
         if self.target_class not in self.model.names.values():
             raise ValueError(f'target_class {self.target_class!r} not in model classes '

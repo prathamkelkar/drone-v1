@@ -15,7 +15,13 @@ class Object_Kalman_Filter(Node):
         # 9.81 for thrown/dropped objects; 0.0 for objects that don't fall
         # (static or constant-velocity), so noise can never switch gravity on.
         self.declare_parameter('gravity', 9.81)
-        self.kf = KalmanFilter(g=self.get_parameter('gravity').value)
+        # False: the object is in free flight from the first detection, so
+        # gravity is applied immediately (parabolic model throughout).
+        # True: start with constant velocity and only switch gravity on once
+        # downward motion is seen (for objects that start at rest).
+        self.declare_parameter('gravity_gate', False)
+        self.kf = KalmanFilter(g=self.get_parameter('gravity').value,
+                               gravity_gate=self.get_parameter('gravity_gate').value)
 
         qos = QoSProfile(
                 reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -95,7 +101,7 @@ class Object_Kalman_Filter(Node):
 
 
 class KalmanFilter():
-    def __init__(self, g=9.81):
+    def __init__(self, g=9.81, gravity_gate=False):
 
         self.g = g
         self.x = np.zeros((6, 1))
@@ -109,7 +115,8 @@ class KalmanFilter():
         # your measurement noise floor — should be comfortably above the
         # velocity jitter you see while the object is genuinely at rest.
         self.VZ_THRESHOLD = 0.3
-        self.in_flight = False
+        self.gravity_gate = gravity_gate
+        self.in_flight = not gravity_gate
 
     def initialize(self, z: np.ndarray):
         self.x[0:3] = z
@@ -120,11 +127,11 @@ class KalmanFilter():
         # eye(6)*10 made it need ~5+ updates, far more than a ball in view
         # for ~1 s at ~5-8 Hz ever provides.
         self.P = np.diag([0.1, 0.1, 0.1, 100.0, 100.0, 100.0])
-        # Object starts assumed stationary/at rest — gravity is gated off
-        # until real downward motion is detected, so a resting object
-        # doesn't get dragged down by a freefall assumption that doesn't
-        # apply yet.
-        self.in_flight = False
+        # Without the gate the object is treated as in free flight from the
+        # start. With it, gravity stays off until real downward motion is
+        # detected, so a resting object isn't dragged down by a freefall
+        # assumption that doesn't apply yet.
+        self.in_flight = not self.gravity_gate
 
     def predict(self, dt):
 

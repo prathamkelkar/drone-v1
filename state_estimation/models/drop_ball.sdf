@@ -12,8 +12,10 @@
       <collision name="collision">
         <geometry><sphere><radius>0.11</radius></sphere></geometry>
       </collision>
+      <!-- orange, for the HSV detector (perception_without_nn) -->
       <visual name="visual">
         <geometry><sphere><radius>0.11</radius></sphere></geometry>
+        <material><ambient>1.0 0.4 0.0 1</ambient><diffuse>1.0 0.4 0.0 1</diffuse><specular>0.2 0.2 0.2 1</specular></material>
       </visual>
     </link>
   </model>

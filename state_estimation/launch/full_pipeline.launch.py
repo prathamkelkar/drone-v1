@@ -22,9 +22,27 @@ def generate_launch_description():
         description='Path to PX4-Autopilot directory'
     )
 
+    # PX4 limits that apply in offboard mode, set to the maximum the drone
+    # allows (PX4's rcS applies any PX4_PARAM_<NAME> env var as
+    # `param set <NAME>` at startup). Simulated x500: 2.13 kg, 34.2 N max
+    # thrust (thrust/weight 1.64).
+    # MPC_ACC_HOR_MAX / MPC_ACC_UP_MAX are not used by offboard control.
+    px4_limits = {
+        'PX4_PARAM_MPC_XY_VEL_MAX': '20.0',    # m/s, parameter maximum (default 12)
+        'PX4_PARAM_MPC_Z_VEL_MAX_UP': '8.0',   # m/s, parameter maximum (default 3)
+        'PX4_PARAM_MPC_Z_VEL_MAX_DN': '4.0',   # m/s, parameter maximum (default 1.5)
+        # Steepest tilt at which full thrust still holds altitude:
+        # acos(weight / max thrust) = 52.4 deg -> g*tan(52) = 12.6 m/s^2
+        # horizontal. The parameter allows up to 89, but beyond ~52 deg the
+        # drone can't hold altitude and would sink while accelerating.
+        'PX4_PARAM_MPC_TILTMAX_AIR': '52.0',   # deg (default 45)
+        'PX4_PARAM_MPC_THR_MAX': '1.0',        # full thrust available (default)
+    }
+
     px4_gazebo = ExecuteProcess(
         cmd=['make', 'px4_sitl', 'gz_x500_depth'],
         cwd=[LaunchConfiguration('px4_dir')],
+        additional_env=px4_limits,
         output='screen'
     )
 
@@ -88,13 +106,28 @@ def generate_launch_description():
         description="Device for YOLO inference: 'cuda:0' (GPU) or 'cpu'"
     )
 
+    # Colour-threshold (HSV) ball detector, no neural network: finds round
+    # orange blobs (the sim balls from glide_ball.py / launch_ball.py are
+    # orange). Used for the ball tests.
     perception_node = Node(
         package='perception',
-        executable='perception_node',
-        parameters=[{'use_sim_time': True,
-                     'device': LaunchConfiguration('perception_device')}],
+        executable='perception_without_nn',
+        parameters=[{'use_sim_time': True}],
         output='screen'
     )
+
+    # YOLO detector with the fine-tuned best.pt ('ball', 'carton',
+    # 'plastic_bottle'), for the bottle (glide_bottle.py): swap it in for
+    # perception_node above.
+    # perception_node = Node(
+    #     package='perception',
+    #     executable='perception_node',
+    #     parameters=[{'use_sim_time': True,
+    #                  'device': LaunchConfiguration('perception_device'),
+    #                  'model_path': os.path.expanduser('~/ros2_ws/best.pt'),
+    #                  'target_class': 'plastic_bottle'}],
+    #     output='screen'
+    # )
 
     object_localizer = Node(
         package='state_estimation',
@@ -106,8 +139,11 @@ def generate_launch_description():
     kalman_filter = Node(
         package='state_estimation',
         executable='object_kalman_filter',
-        # gravity 0.0 for the constant-velocity test; 9.81 for thrown objects
-        parameters=[{'use_sim_time': True, 'gravity': 0.0}],
+        # gravity 0.0: straight-line (constant-velocity) model for the glide
+        # tests, matching the predictor's object_model and the interceptor's
+        # object_gravity. For thrown/dropped objects use 9.81 in all three
+        # (and object_model 'ballistic').
+        parameters=[{'use_sim_time': True, 'gravity': 0.0, 'gravity_gate': False}],
         output='screen'
     )
 
@@ -121,19 +157,50 @@ def generate_launch_description():
     trajectory_predictor = Node(
         package='plan_and_control',
         executable='trajectory_predictor_ellipsoid',
-        # h_target: height (above the drone's start point, z-up) at which the
-        # ball is intercepted. Keep it equal to the interceptor's
-        # takeoff_height (4.0) so the drone catches the ball at hover height
-        # instead of having to descend to the ground in the ball's flight time.
-        parameters=[{'use_sim_time': True, 'object_model': 'constant_velocity', 'h_target': 4.0,
-                     'intercept_mode': 'independent_axes'}],
+        # h_target: lowest height (above the drone's start point, z-up) at
+        # which the ball may be intercepted. 1 m below the 4.0 m hover
+        # (takeoff_height) so the drone can also catch a falling ball that
+        # has already dropped below it.
+        # Drone limits for the intercept solver, at the drone's maximum:
+        #   a_max_h 12.6 m/s^2 = g*tan(52 deg tilt); v_max_h 20 = MPC_XY_VEL_MAX
+        #   a_max_v 6.3 m/s^2 = full-thrust climb (34.2 N / 2.13 kg - g), the
+        #     smaller of climb and descent (~7.9 m/s^2)
+        #   v_max_v 4 m/s = MPC_Z_VEL_MAX_DN, the smaller of climb (8) and
+        #     descent (4); the solver uses one vertical limit for both.
+        parameters=[{'use_sim_time': True, 'object_model': 'constant_velocity', 'h_target': 3.0,
+                     'intercept_mode': 'independent_axes',
+                     'a_max_h': 12.6, 'v_max_h': 20.0, 'a_max_v': 6.3, 'v_max_v': 4.0}],
         output='screen'
     )
 
     interceptor = Node(
             package='intercept',
             executable='offboard_inercept_node',
-            parameters=[{'use_sim_time': True}],
+            # chase_mode 'velocity': fly at full speed toward the target and
+            # brake late, instead of PX4's slow position P-controller.
+            # Velocity setpoint + acceleration feedforward at the drone's
+            # limits: speed caps match the PX4 limits above; a_max_* are the
+            # feedforward accelerations (g*tan(52 deg) horizontal, full-thrust
+            # climb, minimum-thrust descent); a_brake is full horizontal
+            # braking, started response_lag seconds early to allow for the
+            # time the drone takes to tilt the other way.
+            # chase_mode 'thrust': our own guidance + attitude/thrust control
+            # (intercept/thrust_control.py), body rates + thrust to PX4 at
+            # 100 Hz. 'velocity' = PX4 velocity loop + feedforward (previous).
+            parameters=[{'use_sim_time': True, 'chase_mode': 'thrust',
+                         'tilt_max_deg': 52.0, 'att_gain': 12.0, 'rate_max': 8.0,
+                         'tilt_delay': 0.07, 'object_gravity': 0.0,
+                         'v_max_h': 20.0, 'v_max_up': 8.0, 'v_max_dn': 4.0,
+                         'a_max_h': 12.6, 'a_max_up': 6.3, 'a_max_dn': 7.9,
+                         'a_brake': 12.6, 'response_lag': 0.15, 'arrive_radius': 0.1,
+                         # end of an attempt: stop chasing when the intercept
+                         # point is reached, the target disappears for 0.5 s,
+                         # after 4 s or 6 m from home; hold 2 s; fly home at
+                         # 2 m/s; a new attempt needs 1 s without targets first
+                         'target_timeout': 0.5, 'max_chase_time': 4.0,
+                         'max_chase_distance': 6.0, 'hold_time': 2.0,
+                         'return_speed': 2.0, 'return_accel': 2.0,
+                         'rearm_quiet': 1.0}],
             output='screen'
     )
 
