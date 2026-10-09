@@ -12,14 +12,10 @@ from px4_msgs.msg import (
     TrajectorySetpoint,
     VehicleAttitude,
     VehicleCommand,
-    VehicleOdometry,
-    VehicleRatesSetpoint
+    VehicleOdometry
 )
 
-from intercept.thrust_control import (
-    accel_to_attitude, attitude_rates, ball_position, intercept_accel,
-    motor_command, quat_from_body_z
-)
+from intercept.thrust_control import ball_position, intercept_accel
 
 def _cap_along(direction, magnitude, lim_h, lim_up, lim_dn):
     """Largest value <= magnitude such that direction * value keeps its
@@ -112,6 +108,8 @@ class InterceptSequencer:
         self.t_state = None
         self.hold_point = None
         self.target = None
+        self.committed = False        # set by the node: a committed chase ignores 'target lost' and
+                                      # 'arrived' (both use live measurements); it ends on its planned time
         self.t_target = -1e9          # time of the latest intercept point
         self.t_episode = -1e9         # time a target stream (re)started after a quiet gap
 
@@ -127,6 +125,8 @@ class InterceptSequencer:
             self._go('STOP', now, why)
 
     def _go(self, state, now, why=''):
+        if state != 'CHASE':
+            self.committed = False
         self.state = state
         self.t_state = now
         self.log(f'{state}' + (f' ({why})' if why else ''))
@@ -144,13 +144,13 @@ class InterceptSequencer:
 
         if self.state == 'CHASE':
             err = self.target - pos
-            if now - self.t_target > self.target_timeout:
+            if not self.committed and now - self.t_target > self.target_timeout:
                 self._go('STOP', now, 'target lost')
             elif now - self.t_state > self.max_chase_time:
                 self._go('STOP', now, 'time limit')
             elif np.linalg.norm(pos - home) > self.max_chase_distance:
                 self._go('STOP', now, 'too far from home')
-            elif np.linalg.norm(err) <= self.arrive_radius:
+            elif not self.committed and np.linalg.norm(err) <= self.arrive_radius:
                 self.hold_point = self.target.copy()
                 self._go('HOLD', now, 'arrived at intercept point')
             else:
@@ -230,17 +230,24 @@ class OffboardInterceptNode(Node):
         # 'thrust': our own guidance + attitude/thrust control (see
         # thrust_control.py), sending body rates + thrust to PX4 at 100 Hz.
         self.declare_parameter('tilt_max_deg', 52.0)     # = MPC_TILTMAX_AIR
-        self.declare_parameter('att_gain', 12.0)         # 1/s, attitude error -> rate
-        self.declare_parameter('rate_max', 8.0)          # rad/s roll/pitch rate limit
-        self.declare_parameter('tilt_delay', 0.07)       # s, planned time to tilt
+        self.declare_parameter('tilt_delay', 0.1)        # s, planned time to tilt
         self.declare_parameter('object_gravity', 9.81)   # must match the Kalman filter's gravity
         self.declare_parameter('min_safe_height', 1.0)   # m, never accelerate down below this
+        self.declare_parameter('end_margin', 0.15)       # s after the planned intercept time
+        # Commit only once the ball estimate has settled
+        self.declare_parameter('commit_min_detections', 5)
+        self.declare_parameter('commit_min_span', 0.25)      # s between first and latest detection
+        self.declare_parameter('commit_max_tilt_deg', 10.0)  # drone must be level...
+        self.declare_parameter('commit_max_speed', 0.5)      # ...and nearly still (m/s)
         self.tilt_max = np.radians(self.get_parameter('tilt_max_deg').value)
-        self.att_gain = self.get_parameter('att_gain').value
-        self.rate_max = self.get_parameter('rate_max').value
         self.tilt_delay = self.get_parameter('tilt_delay').value
         self.object_gravity = self.get_parameter('object_gravity').value
         self.min_safe_height = self.get_parameter('min_safe_height').value
+        self.end_margin = self.get_parameter('end_margin').value
+        self.commit_min_detections = self.get_parameter('commit_min_detections').value
+        self.commit_min_span = self.get_parameter('commit_min_span').value
+        self.commit_max_tilt = np.radians(self.get_parameter('commit_max_tilt_deg').value)
+        self.commit_max_speed = self.get_parameter('commit_max_speed').value
         self.chase_mode = self.get_parameter('chase_mode').value
         self.v_max_h = self.get_parameter('v_max_h').value
         self.v_max_up = self.get_parameter('v_max_up').value
@@ -280,7 +287,13 @@ class OffboardInterceptNode(Node):
         self.velocity = np.zeros(3)
         self.q = None                # attitude [w, x, y, z], body FRD -> NED
         self.ball = None             # (position NED, velocity NED, capture time s)
-        self.prev_ball_dist = None
+        # Committed chase (thrust mode): the ball's path is frozen when the
+        # chase starts; the chase ends end_margin s after the planned
+        # intercept time, never before.
+        self.frozen_ball = None      # (position, velocity, capture time) at chase start
+        self.t_end = None            # sim time at which the committed chase ends
+        self.detections = []         # capture times of ball states in the current episode
+        self.detections_episode = None
         self.hold_xy = None
         self.hover_reached = False
 
@@ -297,8 +310,6 @@ class OffboardInterceptNode(Node):
 
         self.ball_sub = self.create_subscription(
             Odometry, '/estimation/object_state', self.ball_callback, qos)
-        self.rates_pub = self.create_publisher(
-            VehicleRatesSetpoint, '/fmu/in/vehicle_rates_setpoint', qos)
 
         self.offboard_mode_pub = self.create_publisher(OffboardControlMode, '/fmu/in/offboard_control_mode', qos)
         self.trajectory_pub = self.create_publisher(TrajectorySetpoint, '/fmu/in/trajectory_setpoint', qos)
@@ -379,6 +390,10 @@ class OffboardInterceptNode(Node):
         self.ball = (np.array([p.x, p.y, p.z]), np.array([v.x, v.y, v.z]), stamp)
         if self.chase_mode == 'thrust':
             self.sequencer.on_target(self.ball[0], self._now())
+            if self.detections_episode != self.sequencer.t_episode:   # new object -> restart count
+                self.detections_episode = self.sequencer.t_episode
+                self.detections = []
+            self.detections.append(stamp)
 
     def attitude_callback(self, msg: VehicleAttitude):
         self.q = np.array([msg.q[0], msg.q[1], msg.q[2], msg.q[3]])
@@ -398,44 +413,78 @@ class OffboardInterceptNode(Node):
         # current yaw every cycle would keep the drone spinning).
         if self.current_yaw is None:
             return float('nan')
-        if now - self.t_yaw_cmd < self.yaw_cmd_timeout:
+        if now - self.t_yaw_cmd < self.yaw_cmd_timeout and self.frozen_ball is None:
             self.yaw_hold = self.current_yaw + self.yaw_offset
         elif self.yaw_hold is None:
             self.yaw_hold = self.current_yaw
         return float(self.yaw_hold)
 
-    def _thrust_chase(self, now, yaw):
-        """One 100 Hz step of our own guidance + attitude/thrust control.
-        Returns (roll, pitch, yaw rate, motor command) or None to stop."""
-        if self.ball is None or self.q is None:
-            return None
-        bp, bv, stamp = self.ball
-        age = float(np.clip(now - stamp, 0.0, 0.5))
+    def _tilt(self):
+        """Angle between body z and vertical (rad), from the PX4 attitude."""
+        if self.q is None:
+            return np.pi
+        w, x, y, z = self.q
+        return float(np.arccos(np.clip(1.0 - 2.0 * (x * x + y * y), -1.0, 1.0)))
+
+    def _estimate_settled(self):
+        d = self.detections
+        return (len(d) >= self.commit_min_detections
+                and d[-1] - d[0] >= self.commit_min_span
+                and self._tilt() <= self.commit_max_tilt
+                and float(np.linalg.norm(self.velocity)) <= self.commit_max_speed)
+
+    def _thrust_chase(self, now):
+        """One 100 Hz step of our own intercept guidance.
+
+        Returns ('hold', None) while waiting for the ball estimate to settle,
+        ('accel', a) with the NED acceleration to command, or None when the
+        chase is over. PX4 turns the acceleration into tilt + thrust in its
+        own fast loops (no attitude loop over ROS).
+
+        Settle: wait for commit_min_detections ball states spanning
+        commit_min_span s, with the drone level and nearly still, so the
+        committed velocity estimate is good (a commit after 2 detections had
+        the ball's direction wrong).
+        Commit: then the ball's predicted path is frozen. Measurements taken
+        while the drone manoeuvres are unreliable (the body-fixed camera
+        tilts away from the ball and fast rotation corrupts the
+        localisation), so they are ignored; the guidance keeps re-planning
+        from the drone's own state every cycle.
+        End: end_margin s after the planned intercept time, never before -
+        the drone never brakes ahead of the intercept.
+        """
+        if self.frozen_ball is None:
+            if self.ball is None or not self._estimate_settled():
+                return 'hold', None
+            self.frozen_ball = self.ball
+            self.sequencer.committed = True
+            d = self.detections
+            self.get_logger().info(
+                f'Intercept: committed to the ball path ({len(d)} detections over '
+                f'{d[-1] - d[0]:.2f} s, ball velocity {np.round(self.ball[1], 2)} m/s)')
+        bp, bv, stamp = self.frozen_ball
+        age = max(now - stamp, 0.0)
         g = self.object_gravity
         bp_now = ball_position(age, bp, bv, g)
         bv_now = bv + np.array([0.0, 0.0, g * age])
 
-        # The chase only ends once the ball is past and moving away; there is
-        # no cut-off before the planned intercept time, so the drone keeps
-        # driving at full effort right through the intercept point.
-        dist = float(np.linalg.norm(bp_now - self.position))
         a, t_go, feasible = intercept_accel(
             self.position, self.velocity, bp_now, bv_now, g,
             self.a_max_h, self.a_max_up, self.a_max_dn, delay=self.tilt_delay)
-        passed = self.prev_ball_dist is not None and dist > self.prev_ball_dist + 0.02 and dist < 1.5
-        self.prev_ball_dist = dist
-        if passed:
-            self.sequencer.finish(now, f'intercept over (closest ~{dist:.2f} m)')
+
+        # Planned intercept time: fixed once the intercept is imminent; the
+        # chase ends end_margin after it.
+        if self.t_end is None and t_go <= 0.15:
+            self.t_end = now + t_go + self.end_margin
+        if self.t_end is not None and now >= self.t_end:
+            dist = float(np.linalg.norm(bp_now - self.position))
+            self.sequencer.finish(now, f'planned intercept time passed (predicted gap {dist:.2f} m)')
             return None
 
         # Ground safety: no downward acceleration close to the ground (NED z down)
         if -self.position[2] < self.min_safe_height:
             a[2] = min(a[2], -2.0)
-
-        body_z, f = accel_to_attitude(a, self.tilt_max)
-        q_des = quat_from_body_z(body_z, yaw if np.isfinite(yaw) else self.current_yaw or 0.0)
-        rates = attitude_rates(self.q, q_des, k_rp=self.att_gain, rate_max_rp=self.rate_max)
-        return rates, motor_command(f)
+        return 'accel', a
 
     def publish_setpoints(self):
         # Published every cycle, regardless of whether a target exists
@@ -444,7 +493,7 @@ class OffboardInterceptNode(Node):
         position_sp = None
         velocity_sp = None
         accel_ff = None
-        rate_cmd = None
+        accel_cmd = None             # thrust mode: acceleration-only setpoint
         now = self._now()
         yaw = self._yaw_setpoint(now)
 
@@ -460,10 +509,14 @@ class OffboardInterceptNode(Node):
             else:
                 state, kind, vec, acc = self.sequencer.step(now, self.position, self.velocity, home)
                 if state == 'CHASE' and self.chase_mode == 'thrust':
-                    rate_cmd = self._thrust_chase(now, yaw)
-                    if rate_cmd is None:        # chase just ended -> brake this cycle
+                    res = self._thrust_chase(now)
+                    if res is None:                 # chase just ended -> brake this cycle
                         velocity_sp = np.zeros(3)
                         accel_ff = np.full(3, np.nan)
+                    elif res[0] == 'hold':          # waiting for the estimate to settle
+                        position_sp = home
+                    else:
+                        accel_cmd = res[1]
                 elif kind == 'velocity' and vec is not None:
                     velocity_sp = vec
                     accel_ff = acc if acc is not None else np.full(3, np.nan)
@@ -472,40 +525,37 @@ class OffboardInterceptNode(Node):
                 else:
                     position_sp = vec
                 if state != 'CHASE':
-                    self.prev_ball_dist = None
+                    self.frozen_ball = None
+                    self.t_end = None
 
         stamp_us = int(self.get_clock().now().nanoseconds / 1000)
         offboard_msg = OffboardControlMode()
-        offboard_msg.position = rate_cmd is None and velocity_sp is None
-        offboard_msg.velocity = rate_cmd is None and velocity_sp is not None
-        offboard_msg.acceleration = False
+        offboard_msg.position = accel_cmd is None and velocity_sp is None
+        offboard_msg.velocity = accel_cmd is None and velocity_sp is not None
+        offboard_msg.acceleration = accel_cmd is not None
         offboard_msg.attitude = False
-        offboard_msg.body_rate = rate_cmd is not None
+        offboard_msg.body_rate = False
         offboard_msg.timestamp = stamp_us
         self.offboard_mode_pub.publish(offboard_msg)
 
-        if rate_cmd is not None:
-            rates, u = rate_cmd
-            rmsg = VehicleRatesSetpoint()
-            rmsg.roll, rmsg.pitch, rmsg.yaw = float(rates[0]), float(rates[1]), float(rates[2])
-            rmsg.thrust_body = [0.0, 0.0, -float(u)]
-            rmsg.timestamp = stamp_us
-            self.rates_pub.publish(rmsg)
-        elif position_sp is not None or velocity_sp is not None:
-            traj_msg = TrajectorySetpoint()
-            if velocity_sp is not None:
-                traj_msg.position = [float('nan')] * 3
-                traj_msg.velocity = [float(v) for v in velocity_sp]
-                traj_msg.acceleration = [float(a) for a in accel_ff]
-            else:
-                traj_msg.position = [float(v) for v in position_sp]
-                traj_msg.velocity = [float('nan')] * 3
-                traj_msg.acceleration = [float('nan')] * 3
-            traj_msg.yaw = yaw
-            traj_msg.timestamp = stamp_us
-            self.trajectory_pub.publish(traj_msg)
-        else:
+        if position_sp is None and velocity_sp is None and accel_cmd is None:
             return
+        traj_msg = TrajectorySetpoint()
+        if accel_cmd is not None:
+            traj_msg.position = [float('nan')] * 3
+            traj_msg.velocity = [float('nan')] * 3
+            traj_msg.acceleration = [float(a) for a in accel_cmd]
+        elif velocity_sp is not None:
+            traj_msg.position = [float('nan')] * 3
+            traj_msg.velocity = [float(v) for v in velocity_sp]
+            traj_msg.acceleration = [float(a) for a in accel_ff]
+        else:
+            traj_msg.position = [float(v) for v in position_sp]
+            traj_msg.velocity = [float('nan')] * 3
+            traj_msg.acceleration = [float('nan')] * 3
+        traj_msg.yaw = yaw
+        traj_msg.timestamp = stamp_us
+        self.trajectory_pub.publish(traj_msg)
 
         self.setpoint_counter += 1
 

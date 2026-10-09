@@ -1,10 +1,23 @@
 from launch import LaunchDescription
 from launch.actions import ExecuteProcess, TimerAction, DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 import os
 
 def generate_launch_description():
+
+    # How the test object moves. One switch for the three nodes that must
+    # agree on it (Kalman filter gravity, predictor object_model,
+    # interceptor object_gravity) - a mismatch makes the whole pipeline chase
+    # a ball it thinks is falling.
+    #   motion:=linear     glide_ball.py / glide_bottle.py (straight line, no gravity)
+    #   motion:=ballistic  launch_ball.py (thrown / dropped, gravity 9.81)
+    motion_arg = DeclareLaunchArgument(
+        'motion', default_value='linear', choices=['linear', 'ballistic'],
+        description='Object motion model: linear (glide_*.py) or ballistic (launch_ball.py)')
+    motion = LaunchConfiguration('motion')
+    object_gravity = PythonExpression(["9.81 if '", motion, "' == 'ballistic' else 0.0"])
+    object_model = PythonExpression(["'ballistic' if '", motion, "' == 'ballistic' else 'constant_velocity'"])
 
     micro_xrce_agent = ExecuteProcess(
         cmd=['MicroXRCEAgent', 'udp4', '-p', '8888'],
@@ -37,6 +50,15 @@ def generate_launch_description():
         # drone can't hold altitude and would sink while accelerating.
         'PX4_PARAM_MPC_TILTMAX_AIR': '52.0',   # deg (default 45)
         'PX4_PARAM_MPC_THR_MAX': '1.0',        # full thrust available (default)
+        # Faster tilting inside PX4's own attitude loop (the interceptor now
+        # sends acceleration setpoints; PX4 turns them into tilt + thrust).
+        # The attitude gain sets how fast the tilt error is commanded away
+        # (rate = gain * error); at the default 4.0 a 52 deg tilt asks for
+        # only 3.6 rad/s, under the 220 deg/s limit, so both are raised.
+        'PX4_PARAM_MC_ROLL_P': '6.5',          # default 4.0 (range 0-12)
+        'PX4_PARAM_MC_PITCH_P': '6.5',         # default 4.0
+        'PX4_PARAM_MC_ROLLRATE_MAX': '480.0',  # deg/s, default 220 (range 0-1800)
+        'PX4_PARAM_MC_PITCHRATE_MAX': '480.0', # deg/s, default 220
     }
 
     px4_gazebo = ExecuteProcess(
@@ -106,28 +128,21 @@ def generate_launch_description():
         description="Device for YOLO inference: 'cuda:0' (GPU) or 'cpu'"
     )
 
-    # Colour-threshold (HSV) ball detector, no neural network: finds round
-    # orange blobs (the sim balls from glide_ball.py / launch_ball.py are
-    # orange). Used for the ball tests.
-    perception_node = Node(
-        package='perception',
-        executable='perception_without_nn',
-        parameters=[{'use_sim_time': True}],
-        output='screen'
-    )
-
-    # YOLO detector with the fine-tuned best.pt ('ball', 'carton',
-    # 'plastic_bottle'), for the bottle (glide_bottle.py): swap it in for
-    # perception_node above.
     # perception_node = Node(
     #     package='perception',
     #     executable='perception_node',
     #     parameters=[{'use_sim_time': True,
-    #                  'device': LaunchConfiguration('perception_device'),
-    #                  'model_path': os.path.expanduser('~/ros2_ws/best.pt'),
-    #                  'target_class': 'plastic_bottle'}],
+    #                  'device': LaunchConfiguration('perception_device')}],
     #     output='screen'
     # )
+
+    perception_node = Node(
+        package='perception',
+        executable='perception_without_nn',
+        parameters=[{'use_sim_time': True,
+                    'device': LaunchConfiguration('perception_device')}],
+        output='screen'
+    )
 
     object_localizer = Node(
         package='state_estimation',
@@ -139,11 +154,9 @@ def generate_launch_description():
     kalman_filter = Node(
         package='state_estimation',
         executable='object_kalman_filter',
-        # gravity 0.0: straight-line (constant-velocity) model for the glide
-        # tests, matching the predictor's object_model and the interceptor's
-        # object_gravity. For thrown/dropped objects use 9.81 in all three
-        # (and object_model 'ballistic').
-        parameters=[{'use_sim_time': True, 'gravity': 0.0, 'gravity_gate': False}],
+        # gravity from the 'motion' launch argument (0.0 or 9.81), applied
+        # from the first detection (no gate)
+        parameters=[{'use_sim_time': True, 'gravity': object_gravity, 'gravity_gate': False}],
         output='screen'
     )
 
@@ -167,7 +180,7 @@ def generate_launch_description():
         #     smaller of climb and descent (~7.9 m/s^2)
         #   v_max_v 4 m/s = MPC_Z_VEL_MAX_DN, the smaller of climb (8) and
         #     descent (4); the solver uses one vertical limit for both.
-        parameters=[{'use_sim_time': True, 'object_model': 'constant_velocity', 'h_target': 3.0,
+        parameters=[{'use_sim_time': True, 'object_model': object_model, 'h_target': 3.0,
                      'intercept_mode': 'independent_axes',
                      'a_max_h': 12.6, 'v_max_h': 20.0, 'a_max_v': 6.3, 'v_max_v': 4.0}],
         output='screen'
@@ -184,12 +197,15 @@ def generate_launch_description():
             # climb, minimum-thrust descent); a_brake is full horizontal
             # braking, started response_lag seconds early to allow for the
             # time the drone takes to tilt the other way.
-            # chase_mode 'thrust': our own guidance + attitude/thrust control
-            # (intercept/thrust_control.py), body rates + thrust to PX4 at
-            # 100 Hz. 'velocity' = PX4 velocity loop + feedforward (previous).
+            # chase_mode 'thrust': our own intercept guidance
+            # (intercept/thrust_control.py) sends an acceleration setpoint to
+            # PX4 at 100 Hz; PX4's own loops turn it into tilt + thrust.
+            # 'velocity' = PX4 velocity loop + feedforward (previous).
             parameters=[{'use_sim_time': True, 'chase_mode': 'thrust',
-                         'tilt_max_deg': 52.0, 'att_gain': 12.0, 'rate_max': 8.0,
-                         'tilt_delay': 0.07, 'object_gravity': 0.0,
+                         'tilt_max_deg': 52.0,
+                         'tilt_delay': 0.1, 'object_gravity': object_gravity,
+                         # chase ends end_margin s after the planned intercept time
+                         'end_margin': 0.15,
                          'v_max_h': 20.0, 'v_max_up': 8.0, 'v_max_dn': 4.0,
                          'a_max_h': 12.6, 'a_max_up': 6.3, 'a_max_dn': 7.9,
                          'a_brake': 12.6, 'response_lag': 0.15, 'arrive_radius': 0.1,
@@ -205,6 +221,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        motion_arg,
         px4_dir_arg,
         perception_device_arg,
         micro_xrce_agent,
