@@ -124,12 +124,17 @@
       <pose degrees="true">0 0 0.195 0 0 90</pose>
     </include>
 
-    <model name="target_box">
+    <!-- Static red ball 4 m straight ahead of the drone at camera height.
+         The drone spawns at yaw 90 deg, so its nose (model +x) points along
+         world +y. Hover is ~4.2 m above the spawn origin (z 0.195) -> z 4.4.
+         Diameter 0.22 m = KNOWN_OBJECT_WIDTH in object_localizer.py.
+         No collision, so the drone can fly through it. -->
+    <model name="target_ball">
     <static>true</static>
-    <pose>4 0 4 0 0 0</pose>
+    <pose>0 4 4.4 0 0 0</pose>
     <link name="link">
       <visual name="v">
-        <geometry><box><size>0.5 0.5 0.5</size></box></geometry>
+        <geometry><sphere><radius>0.11</radius></sphere></geometry>
         <material><ambient>1 0 0 1</ambient><diffuse>1 0 0 1</diffuse></material>
       </visual>
     </link>
