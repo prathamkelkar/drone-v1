@@ -11,9 +11,10 @@ computed separately (each axis has its own a_max/v_max). The overall
 time-to-reach is taken as the MAX across axes, since the drone hasn't
 "arrived" until every axis has completed its required motion.
 
-Subscribes to /estimation/object_state (nav_msgs/Odometry) and a drone
-odometry topic, publishes the computed intercept point on
-/planning/intercept_point_independent_axes.
+Subscribes to /estimation/object_state (nav_msgs/Odometry) and the drone
+odometry (/mavros/local_position/odom), publishes the computed intercept
+point on /plan/intercept_timestamp_independent_axes. All frames are ENU
+(z up); world -> map is identity.
 """
 
 import numpy as np
@@ -21,6 +22,7 @@ from scipy.optimize import brentq
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
 
@@ -116,8 +118,8 @@ class TrajectoryPredictorIndependentAxesNode(Node):
     def __init__(self):
         super().__init__('trajectory_predictor_independent_axes_node')
 
-        # TODO: replace with real per-axis values from PX4 params or
-        # empirical testing.
+        # TODO: replace with real per-axis values from ArduPilot params
+        # (WPNAV_ACCEL, WPNAV_SPEED, ...) or empirical testing.
         self.declare_parameter('a_max_x', 4.0)
         self.declare_parameter('a_max_y', 4.0)
         self.declare_parameter('a_max_z', 2.0)
@@ -125,6 +127,7 @@ class TrajectoryPredictorIndependentAxesNode(Node):
         self.declare_parameter('v_max_y', 5.0)
         self.declare_parameter('v_max_z', 3.0)
         self.declare_parameter('h_target', 0.0)
+        self.declare_parameter('drone_odom_topic', '/mavros/local_position/odom')
 
         self.solver = IndependentAxisInterceptSolver(
             a_max_x=self.get_parameter('a_max_x').value,
@@ -138,11 +141,17 @@ class TrajectoryPredictorIndependentAxesNode(Node):
 
         self.drone_position = None
 
+        # Both publishers (object_kalman_filter, MAVROS) are best-effort.
+        best_effort = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT,
+                                 durability=DurabilityPolicy.VOLATILE,
+                                 history=HistoryPolicy.KEEP_LAST,
+                                 depth=10)
         self.object_state_sub = self.create_subscription(
-            Odometry, '/state_estimation/object_state', self.object_state_callback, 10)
+            Odometry, '/estimation/object_state', self.object_state_callback, best_effort)
 
         self.drone_odom_sub = self.create_subscription(
-            Odometry, '/fmu/out/vehicle_odometry', self.drone_odom_callback, 10)
+            Odometry, self.get_parameter('drone_odom_topic').value,
+            self.drone_odom_callback, best_effort)
 
         self.intercept_pub = self.create_publisher(
             PoseStamped, '/plan/intercept_timestamp_independent_axes', 10)

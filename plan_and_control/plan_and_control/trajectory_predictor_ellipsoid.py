@@ -4,8 +4,13 @@ trajectory_predictor_node
 
 Subscribes to the object's filtered state (/estimation/object_state,
 nav_msgs/Odometry from object_kalman_filter_node) and the drone's own
-current position (/fmu/out/vehicle_odometry or equivalent), and solves
-for a one-shot straight-line intercept point + time.
+current position (/mavros/local_position/odom), and solves for a one-shot
+straight-line intercept point + time.
+
+Frames: everything is ENU (z up). The object state is in 'world', the drone
+odometry in 'map'; world -> map is identity, so they are used together
+directly. MAVROS's local origin is the home position (on the ground), so
+h_target is the height above home.
 
 Re-solves on every new object state update rather than committing once,
 so the plan self-corrects as the KF estimate refines and as the drone
@@ -37,7 +42,6 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
-from px4_msgs.msg import VehicleOdometry
 
 
 class InterceptSolver:
@@ -210,10 +214,9 @@ class TrajectoryPredictorNode(Node):
     def __init__(self):
         super().__init__('trajectory_predictor_node')
 
-        # TODO: replace with real values from PX4 params
-        # (MPC_ACC_HOR_MAX, MPC_ACC_UP_MAX/MPC_ACC_DOWN_MAX,
-        # MPC_XY_VEL_MAX, MPC_Z_VEL_MAX_UP/DN) or empirical
-        # step-response testing in Gazebo.
+        # TODO: replace with real values from ArduPilot params
+        # (WPNAV_ACCEL, WPNAV_ACCEL_Z, WPNAV_SPEED, WPNAV_SPEED_UP/DN)
+        # or empirical step-response testing in Gazebo.
         self.declare_parameter('a_max_h', 5.0)
         self.declare_parameter('a_max_v', 5.0)
         self.declare_parameter('v_max_h', 20.0)
@@ -224,6 +227,7 @@ class TrajectoryPredictorNode(Node):
         # 'constant_velocity' (no gravity, e.g. a ball gliding sideways) or
         # 'static' (just fly to where it is now).
         self.declare_parameter('object_model', 'ballistic')
+        self.declare_parameter('drone_odom_topic', '/mavros/local_position/odom')
 
         self.solver = InterceptSolver(
             a_max_h=self.get_parameter('a_max_h').value,
@@ -252,44 +256,43 @@ class TrajectoryPredictorNode(Node):
                        history=HistoryPolicy.KEEP_LAST,
                        depth=10))
 
-        # PX4 publishes best-effort; match px4_odom_to_tf's QoS.
-        px4_qos = QoSProfile(
+        # Best-effort to match MAVROS's sensor QoS (same as odom_to_tf).
+        odom_qos = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
             durability=DurabilityPolicy.VOLATILE,
             history=HistoryPolicy.KEEP_LAST,
             depth=1
         )
         self.drone_odom_sub = self.create_subscription(
-            VehicleOdometry, '/fmu/out/vehicle_odometry', self.drone_odom_callback, px4_qos)
+            Odometry, self.get_parameter('drone_odom_topic').value,
+            self.drone_odom_callback, odom_qos)
 
         self.intercept_pub = self.create_publisher(
             PoseStamped, '/planning/intercept_ellipsoid', 10)
 
         self.get_logger().info('trajectory_predictor_node started')
 
-    def drone_odom_callback(self, msg: VehicleOdometry):
-        # PX4 is NED (z down); the solver works with z up.
-        self.drone_position = np.array([
-            msg.position[0],
-            msg.position[1],
-            -msg.position[2],
-        ])
+    def drone_odom_callback(self, msg: Odometry):
+        # MAVROS local position: ENU 'map' frame, same convention as the solver.
+        # (Only position is used; MAVROS's twist is in the body frame.)
+        p = msg.pose.pose.position
+        self.drone_position = np.array([p.x, p.y, p.z])
 
     def object_state_callback(self, msg: Odometry):
         if self.drone_position is None:
             self.get_logger().warn('No drone position yet — skipping solve')
             return
 
-        # Object state is in the NED 'world' frame; flip z to z-up.
+        # Object state is in the ENU 'world' frame (z up), as the solver expects.
         p0 = np.array([
             msg.pose.pose.position.x,
             msg.pose.pose.position.y,
-            -msg.pose.pose.position.z,
+            msg.pose.pose.position.z,
         ])
         v0 = np.array([
             msg.twist.twist.linear.x,
             msg.twist.twist.linear.y,
-            -msg.twist.twist.linear.z,
+            msg.twist.twist.linear.z,
         ])
 
         model = self.get_parameter('object_model').value
@@ -331,7 +334,7 @@ class TrajectoryPredictorNode(Node):
         out.header = msg.header
         out.pose.position.x = float(p_intercept[0])
         out.pose.position.y = float(p_intercept[1])
-        out.pose.position.z = float(-p_intercept[2])  # back to NED (z down)
+        out.pose.position.z = float(p_intercept[2])  # ENU, same frame as the object state
         out.pose.orientation.w = 1.0
         self.intercept_pub.publish(out)
 
