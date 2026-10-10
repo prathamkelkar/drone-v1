@@ -2,7 +2,7 @@
 """Spawn an upright plastic bottle at (X, Y, Z) gliding at constant velocity, no gravity.
 
 Usage: glide_bottle.py [X] [Y] [Z] [VX] [VY] [VZ] [--mesh]
-       defaults: 2.5 -1.6 4.4  0 0.8 0      (WORLD env var selects the world, default 'default')
+       defaults: 2.5 -1.6 4.4  0 0.8 0      (WORLD env var selects the world, default 'iris_runway')
 
 Same motion as glide_ball.py: Gazebo frame (x east, y north, z up), 2.5 m ahead
 of the drone, 1.6 m to the right, at camera height, moving left at 0.8 m/s.
@@ -34,7 +34,7 @@ use_mesh = '--mesh' in sys.argv
 a = [float(v) for v in sys.argv[1:] if v != '--mesh'][:6]
 defaults = [2.5, -1.6, 4.4, 0.0, 0.8, 0.0]
 x, y, z, vx, vy, vz = a + defaults[len(a):]
-world = os.environ.get('WORLD', 'default')
+world = os.environ.get('WORLD', 'iris_runway')
 
 velocity_plugin = f"""
     <plugin filename="gz-sim-velocity-control-system" name="gz::sim::systems::VelocityControl">

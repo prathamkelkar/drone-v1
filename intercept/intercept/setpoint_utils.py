@@ -26,12 +26,13 @@ def position_type_mask(use_yaw):
 
 
 def is_finite_point(p):
-    """True if every coordinate is a finite number."""
+    """Return True if every coordinate is a finite number."""
     return all(math.isfinite(float(c)) for c in p)
 
 
 def clamp_to_box(p, lo, hi):
-    """Clamp point p to the axis-aligned box [lo, hi].
+    """
+    Clamp point p to the axis-aligned box [lo, hi].
 
     Returns (clamped_point_as_list, was_clamped).
     """
@@ -45,7 +46,8 @@ def clamp_to_box(p, lo, hi):
 
 
 def yaw_from_quaternion(x, y, z, w):
-    """Yaw (rotation about +z) of a quaternion, in radians, in (-pi, pi].
+    """
+    Return the yaw (rotation about +z) of a quaternion, in radians, in (-pi, pi].
 
     For an ENU/FLU pose this is the heading measured counter-clockwise
     from east (+x).
@@ -59,7 +61,8 @@ def wrap_angle(a):
 
 
 def yaw_toward_camera_offset(current_yaw, camera_yaw_offset):
-    """Yaw setpoint (ENU, CCW positive) that turns toward the object.
+    """
+    Return the yaw setpoint (ENU, CCW positive) that turns toward the object.
 
     rotate_command publishes the camera-relative angle with POSITIVE meaning
     "object is to the RIGHT of centre". In ENU, turning right is a NEGATIVE

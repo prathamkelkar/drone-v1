@@ -18,14 +18,13 @@ Parameter name 'tf.send' is taken from MAVROS's own apm_config.yaml
 """
 import sys
 
+from mavros_msgs.msg import State
+from mavros_msgs.srv import MessageInterval
+from rcl_interfaces.srv import SetParameters
 import rclpy
 from rclpy.node import Node
 from rclpy.parameter import Parameter
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
-
-from rcl_interfaces.srv import SetParameters
-from mavros_msgs.msg import State
-from mavros_msgs.srv import MessageInterval
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 
 
 class MavrosSetup(Node):
@@ -44,7 +43,7 @@ class MavrosSetup(Node):
         self.timeout = float(self.get_parameter('timeout').value)
 
         # Pending work. Each entry is removed once MAVROS confirms success.
-        self.pending_intervals = set(int(i) for i in self.get_parameter('message_ids').value)
+        self.pending_intervals = {int(i) for i in self.get_parameter('message_ids').value}
         self.tf_pending = bool(self.get_parameter('disable_mavros_tf').value)
         self.in_flight = set()   # keys of requests waiting for a response
 
@@ -104,7 +103,8 @@ class MavrosSetup(Node):
         if self.tf_pending and 'tf' not in self.in_flight:
             if self.param_client.service_is_ready():
                 req = SetParameters.Request()
-                req.parameters = [Parameter('tf.send', Parameter.Type.BOOL, False).to_parameter_msg()]
+                req.parameters = [
+                    Parameter('tf.send', Parameter.Type.BOOL, False).to_parameter_msg()]
                 self.in_flight.add('tf')
                 self.param_client.call_async(req).add_done_callback(self.on_tf_done)
             else:

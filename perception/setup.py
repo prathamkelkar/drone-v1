@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='prathamkelkar',
     maintainer_email='pratham.kel@gmail.com',
-    description='TODO: Package description',
+    description='YOLO-based single-object detector publishing vision_msgs/Detection2D.',
     license='TODO: License declaration',
     extras_require={
         'test': [

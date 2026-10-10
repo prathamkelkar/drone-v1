@@ -1,8 +1,8 @@
 # intercept
 
-Offboard flight node that physically flies the drone to the intercept point
-computed by `plan_and_control`. Runs a fully automatic mission: arm → climb
-to hover height → hold position until a target arrives → chase it.
+Flies the drone to the intercept point computed by `plan_and_control`, using
+ArduPilot GUIDED mode through MAVROS. Fully automatic: set GUIDED → arm →
+take off → hover until a target arrives → chase it.
 
 ## Node: `offboard_inercept_node`
 
@@ -12,59 +12,75 @@ ROS node name is `offboard_intercept_node`.)
 **Subscribes**
 | Topic | Type | Notes |
 |---|---|---|
-| `/planning/intercept_ellipsoid` | `geometry_msgs/PoseStamped` | Target position, from `plan_and_control` |
-| `/rotate_command` | `geometry_msgs/Vector3` | Only `z` (yaw offset) is used; from `state_estimation`'s `rotate_command` |
-| `/fmu/out/vehicle_odometry` | `px4_msgs/VehicleOdometry` | Current position |
-| `/fmu/out/vehicle_attitude` | `px4_msgs/VehicleAttitude` | Current yaw |
+| `/planning/intercept_ellipsoid` | `geometry_msgs/PoseStamped` | Target, ENU `world`/`map`; non-finite targets are ignored |
+| `/rotate_command` | `geometry_msgs/Vector3` | Only `z` (camera yaw offset, + = object to the right) is used |
+| `/mavros/local_position/odom` | `nav_msgs/Odometry` | Position and yaw (best-effort) |
+| `/mavros/state` | `mavros_msgs/State` | `connected`, `armed`, `mode` |
 
-**Publishes** (`px4_msgs`, best-effort/volatile QoS)
-| Topic | Type |
+**Publishes**: `/mavros/setpoint_raw/local` (`mavros_msgs/PositionTarget`):
+ENU values, `coordinate_frame = FRAME_LOCAL_NED` (MAVROS converts to NED),
+position + yaw only (`type_mask` 2552, or 3576 when yaw is unknown).
+
+**Services used**: `/mavros/set_mode` (`GUIDED`), `/mavros/cmd/arming`,
+`/mavros/cmd/takeoff`. All calls are asynchronous, with retries and backoff.
+
+**State machine** (one timer at `setpoint_rate`, sim time)
+
+| State | Leaves when |
 |---|---|
-| `/fmu/in/offboard_control_mode` | `OffboardControlMode` (position control) |
-| `/fmu/in/trajectory_setpoint` | `TrajectorySetpoint` |
-| `/fmu/in/vehicle_command` | `VehicleCommand` |
+| `WAIT_CONNECT` | FCU connected and odometry received |
+| `SET_GUIDED` | `/mavros/state` reports `GUIDED` |
+| `ARM` | armed (rejections, e.g. EKF not ready, are retried with backoff) |
+| `TAKEOFF` | takeoff accepted, or already airborne (> `airborne_height`) |
+| `CLIMB` | within `takeoff_tolerance` of `takeoff_height` |
+| `HOVER` | streams the hover setpoint; leaves when a target arrives |
+| `TRACK` | streams the latest target (held until a new one) |
+| `OVERRIDDEN` | entered from CLIMB/HOVER/TRACK if mode ≠ GUIDED or disarmed: publishes nothing; back to HOVER (or TAKEOFF on the ground) once GUIDED + armed |
 
-**Behavior**
-- A 20 Hz timer publishes the offboard heartbeat and a position setpoint
-  continuously (PX4 needs ≥2 Hz or it rejects offboard mode).
-- After 20 setpoint cycles it requests offboard mode and arming.
-- Until the hover height is reached (within 0.3 m), the setpoint is the
-  starting x/y at `z = -takeoff_height`. Once reached, it holds there until
-  an intercept pose arrives, then commands that pose.
-- Target height is clamped so the setpoint is never lower than
-  `min_target_height` above ground. All positions are PX4 NED (z down).
-- Commanded yaw = current yaw + `/rotate_command` yaw offset, keeping the
-  object roughly centred in the camera.
+Every startup step has `step_timeout`; on timeout the sequence restarts
+(states already satisfied are skipped).
+
+**Yaw**: setpoint = current yaw − `/rotate_command` yaw offset (ENU yaw is
+counter-clockwise, the offset is positive to the right). Offsets older than
+`rotate_command_timeout` count as zero, so the drone holds its heading when
+the object is lost.
+
+**Safety**: every setpoint is clamped to the `fence_min`/`fence_max` box
+(map frame; z floor is also `min_target_height`) and clamping is logged;
+non-finite setpoints are refused.
 
 **Parameters**
 | Name | Default | Meaning |
 |---|---|---|
-| `takeoff_height` | `1.5` | Hover height in metres |
-| `min_target_height` | `0.3` | Lowest allowed setpoint above ground, metres |
+| `takeoff_height` | `4.0` | Hover height, m above home |
+| `takeoff_tolerance` | `0.3` | Hover reached when within this, m |
+| `min_target_height` | `0.3` | Lowest allowed setpoint, m |
+| `airborne_height` | `0.5` | Above this, no takeoff command is sent |
+| `setpoint_rate` | `20.0` | Hz |
+| `step_timeout` | `60.0` | s per startup step |
+| `retry_period` / `retry_backoff_max` | `2.0` / `10.0` | s |
+| `service_timeout` | `5.0` | s to wait for a service response |
+| `rotate_command_timeout` | `1.0` | s |
+| `fence_min` / `fence_max` | `[-50,-50,0]` / `[50,50,20]` | Setpoint box, m |
+| `odom_topic` | `/mavros/local_position/odom` | |
 
 ## Dependencies
 
-- `rclpy`, `geometry_msgs`, `px4_msgs`
-- `numpy`, `scipy`
-
-## Build
-
-```bash
-cd ~/ros2_ws
-colcon build --packages-select intercept --symlink-install
-```
+- `rclpy`, `geometry_msgs`, `nav_msgs`, `mavros_msgs`
 
 ## Running
 
-Normally started by `state_estimation`'s `full_pipeline.launch.py` (at
-t=35 s). To run it alone, with PX4, the XRCE-DDS agent and the rest of the
-pipeline up:
+Normally started by `state_estimation`'s `full_pipeline.launch.py` (t=35 s).
+To run it alone, with SITL, MAVROS and the rest of the pipeline up:
 
 ```bash
-source install/setup.bash
-ros2 run intercept offboard_inercept_node
+ros2 run intercept offboard_inercept_node --ros-args -p use_sim_time:=true
 ```
 
-The node arms the drone on its own — don't run it alongside `teleop_node`.
+The node arms the drone and takes off on its own.
 
-`package.xml` still has the placeholder description/license (TODO).
+## Tests
+
+```bash
+python3 -m pytest intercept/test/test_setpoint_utils.py
+```

@@ -1,9 +1,8 @@
 """Tests for intercept.setpoint_utils (pure Python, no ROS needed)."""
 import math
 
-import pytest
-
 from intercept import setpoint_utils as su
+import pytest
 
 
 def test_clamp_inside_box_unchanged():

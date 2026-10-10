@@ -3,7 +3,7 @@
 <package format="3">
   <name>state_estimation</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Odometry-to-TF, object localisation and Kalman filtering for the ArduPilot/MAVROS intercept drone, plus the full pipeline launch file.</description>
   <maintainer email="pratham.kel@gmail.com">prathamkelkar</maintainer>
   <license>TODO: License declaration</license>
 

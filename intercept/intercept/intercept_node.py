@@ -26,20 +26,18 @@ FRAME_LOCAL_NED), position + yaw only. They are clamped to a geofence box.
 import enum
 import math
 
-import rclpy
-from rclpy.duration import Duration
-from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
-
 from geometry_msgs.msg import PoseStamped, Vector3
-from nav_msgs.msg import Odometry
-from mavros_msgs.msg import PositionTarget, State as MavState
-from mavros_msgs.srv import CommandBool, CommandTOL, SetMode
-
 from intercept.setpoint_utils import (
     clamp_to_box, is_finite_point, position_type_mask,
     yaw_from_quaternion, yaw_toward_camera_offset,
 )
+from mavros_msgs.msg import PositionTarget, State as MavState
+from mavros_msgs.srv import CommandBool, CommandTOL, SetMode
+from nav_msgs.msg import Odometry
+import rclpy
+from rclpy.duration import Duration
+from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 
 
 class Phase(enum.Enum):
@@ -201,7 +199,7 @@ class OffboardInterceptNode(Node):
         self.retry_delay = min(self.retry_delay * 2.0, self.retry_backoff_max)
 
     def _may_attempt(self):
-        """True if no request is in flight and the retry delay has passed."""
+        """Return True if no request is in flight and the retry delay has passed."""
         if self.pending is not None:
             token, name, started = self.pending
             if self._seconds_since(started) < self.service_timeout:
@@ -238,7 +236,8 @@ class OffboardInterceptNode(Node):
         phase = self.phase
 
         # Pilot / failsafe took over: stop streaming, don't fight it.
-        if phase in (Phase.CLIMB, Phase.HOVER, Phase.TRACK) and (not ms.armed or ms.mode != GUIDED):
+        in_flight_phase = phase in (Phase.CLIMB, Phase.HOVER, Phase.TRACK)
+        if in_flight_phase and (not ms.armed or ms.mode != GUIDED):
             self._set_phase(Phase.OVERRIDDEN, f'armed={ms.armed} mode={ms.mode}')
             self.get_logger().warn('No longer in GUIDED/armed: setpoints stopped')
             return
@@ -323,7 +322,8 @@ class OffboardInterceptNode(Node):
 
     def _on_arming(self, res):
         if not res.success:
-            self._backoff(f'arming rejected (MAV_RESULT {res.result}; pre-arm checks/EKF not ready?)')
+            self._backoff(
+                f'arming rejected (MAV_RESULT {res.result}; pre-arm checks/EKF not ready?)')
         else:
             self.next_attempt = self.get_clock().now() + Duration(
                 seconds=self.retry_period)
@@ -351,7 +351,8 @@ class OffboardInterceptNode(Node):
 
     def publish_setpoint(self, point):
         if point is None or not is_finite_point(point):
-            self.get_logger().warn(f'Refusing non-finite setpoint {point}', throttle_duration_sec=2.0)
+            self.get_logger().warn(f'Refusing non-finite setpoint {point}',
+                                   throttle_duration_sec=2.0)
             return
         sp, clamped = clamp_to_box(point, self.fence_min, self.fence_max)
         if clamped:

@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='prathamkelkar',
     maintainer_email='pratham.kel@gmail.com',
-    description='TODO: Package description',
+    description='Intercept-point solvers that predict where and when the drone can meet a tracked object.',
     license='TODO: License declaration',
     extras_require={
         'test': [

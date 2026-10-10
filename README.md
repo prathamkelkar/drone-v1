@@ -21,7 +21,6 @@ optical frame).
 | `state_estimation` | `odom_to_tf`, `object_localizer`, `object_kalman_filter`, `rotate_command`, `mavros_setup`, the Gazebo models/world and `full_pipeline.launch.py` |
 | `plan_and_control` | intercept-point solvers |
 | `intercept` | flies the drone in GUIDED mode via MAVROS |
-| `simple_quadcopter_teleop` | keyboard teleop, **still PX4-only** (not ported) |
 
 ## Prerequisites
 

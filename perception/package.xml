@@ -3,7 +3,7 @@
 <package format="3">
   <name>perception</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>YOLO-based single-object detector publishing vision_msgs/Detection2D.</description>
   <maintainer email="pratham.kel@gmail.com">prathamkelkar</maintainer>
   <license>TODO: License declaration</license>
 

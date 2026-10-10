@@ -2,7 +2,7 @@
 """Spawn the ball at (X, Y, Z) gliding at constant velocity (VX, VY, VZ), no gravity.
 
 Usage: glide_ball.py [X] [Y] [Z] [VX] [VY] [VZ]
-       defaults: 2.5 -1.6 4.4  0 0.8 0      (WORLD env var selects the world, default 'default')
+       defaults: 2.5 -1.6 4.4  0 0.8 0      (WORLD env var selects the world, default 'iris_runway')
 
 Gazebo frame (x east, y north, z up). Defaults put the ball 2.5 m ahead of the
 drone (assuming it faces +x), 1.6 m to the right of its heading, at camera
@@ -23,7 +23,7 @@ from gz.transport13 import Node
 a = [float(v) for v in sys.argv[1:7]]
 defaults = [2.5, -1.6, 4.4, 0.0, 0.8, 0.0]
 x, y, z, vx, vy, vz = a + defaults[len(a):]
-world = os.environ.get('WORLD', 'default')
+world = os.environ.get('WORLD', 'iris_runway')
 
 SDF = f"""<?xml version="1.0"?>
 <sdf version="1.9">

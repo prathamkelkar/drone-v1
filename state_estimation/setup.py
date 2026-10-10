@@ -19,7 +19,7 @@ setup(
     zip_safe=True,
     maintainer='prathamkelkar',
     maintainer_email='pratham.kel@gmail.com',
-    description='TODO: Package description',
+    description='Odometry-to-TF, object localisation and Kalman filtering for the ArduPilot/MAVROS intercept drone, plus the full pipeline launch file.',
     license='TODO: License declaration',
     extras_require={
         'test': [

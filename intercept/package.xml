@@ -3,7 +3,7 @@
 <package format="3">
   <name>intercept</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Flies the drone to the predicted intercept point in ArduPilot GUIDED mode via MAVROS.</description>
   <maintainer email="pratham.kel@gmail.com">prathamkelkar</maintainer>
   <license>TODO: License declaration</license>
 

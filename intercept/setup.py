@@ -15,7 +15,8 @@ setup(
     zip_safe=True,
     maintainer='prathamkelkar',
     maintainer_email='pratham.kel@gmail.com',
-    description='TODO: Package description',
+    description='Flies the drone to the predicted intercept point in ArduPilot GUIDED mode '
+                'via MAVROS.',
     license='TODO: License declaration',
     extras_require={
         'test': [

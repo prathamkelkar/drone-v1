@@ -3,7 +3,7 @@
 <package format="3">
   <name>plan_and_control</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Intercept-point solvers that predict where and when the drone can meet a tracked object.</description>
   <maintainer email="pratham.kel@gmail.com">prathamkelkar</maintainer>
   <license>TODO: License declaration</license>
 
