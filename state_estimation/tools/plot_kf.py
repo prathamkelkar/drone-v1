@@ -3,15 +3,15 @@
 
 Usage: plot_kf.py [--duration SECONDS] [--save FILE.png]
 
-Raw     : /estimation/pose_object_raw  (geometry_msgs/PoseStamped, world/NED)
-Filtered: /estimation/object_state     (nav_msgs/Odometry, world/NED)
+Raw     : /estimation/pose_object_raw  (geometry_msgs/PoseStamped, world/ENU)
+Filtered: /estimation/object_state     (nav_msgs/Odometry, world/ENU)
 
 Records for --duration seconds (or until Ctrl-C), then shows a plot of
 x, y, z (position) and the filter's velocity estimate. Both topics are
 best-effort, so this uses best-effort QoS (rqt_plot's default reliable
 subscription would never connect). Times are sim time, from the node clock
-at receipt. World frame is PX4 NED, so z is plotted as height (-z) to read
-naturally: a thrown ball rises then falls.
+at receipt. World frame is ENU (z up), so z is plotted directly as height:
+a thrown ball rises then falls.
 """
 import argparse
 import time
@@ -70,20 +70,19 @@ if not raw and not kf:
 
 t0 = min([r[0] for r in raw[:1]] + [k[0] for k in kf[:1]])
 fig, axes = plt.subplots(4, 1, sharex=True, figsize=(10, 9))
-labels = ['x (north) [m]', 'y (east) [m]', 'height = -z [m]']
-sign = [1, 1, -1]
+labels = ['x (east) [m]', 'y (north) [m]', 'z (up) [m]']
 for i, ax in enumerate(axes[:3]):
     if raw:
-        ax.plot([r[0] - t0 for r in raw], [sign[i] * r[1 + i] for r in raw],
+        ax.plot([r[0] - t0 for r in raw], [r[1 + i] for r in raw],
                 'o', ms=4, alpha=0.6, label='raw detection')
     if kf:
-        ax.plot([k[0] - t0 for k in kf], [sign[i] * k[1 + i] for k in kf],
+        ax.plot([k[0] - t0 for k in kf], [k[1 + i] for k in kf],
                 '-o', lw=2, ms=5, label='Kalman filter')
     ax.set_ylabel(labels[i])
     ax.grid(alpha=0.3)
 axes[0].legend(loc='best')
 if kf:
-    axes[3].plot([k[0] - t0 for k in kf], [-k[6] for k in kf], label='KF vertical speed (up +)')
+    axes[3].plot([k[0] - t0 for k in kf], [k[6] for k in kf], label='KF vz (up +)')
     axes[3].plot([k[0] - t0 for k in kf], [k[4] for k in kf], label='KF vx', alpha=0.6)
     axes[3].plot([k[0] - t0 for k in kf], [k[5] for k in kf], label='KF vy', alpha=0.6)
     axes[3].legend(loc='best')
