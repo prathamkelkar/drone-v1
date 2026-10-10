@@ -79,7 +79,8 @@ reboot
    ros2 launch state_estimation full_pipeline.launch.py perception_device:=cpu
    ```
    Launch arguments: `world` (SDF path), `fcu_url` (default `udp://:14550@`;
-   real drone `/dev/ttyAMA0:921600`), `perception_device` (`cuda:0` or `cpu`).
+   real drone `/dev/ttyAMA0:921600`), `perception_device` (`cuda:0` or `cpu`),
+   `target_class` (`ball`, `carton` or `plastic_bottle`; default `plastic_bottle`).
    Stage delays are the `T_*` constants at the top of the launch file (the
    sim runs at ~36% real time, so they are generous).
 4. **Flight.** The interceptor (started at t≈35 s) sets GUIDED, arms, takes off to

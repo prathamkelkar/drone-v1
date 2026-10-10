@@ -51,6 +51,10 @@ def generate_launch_description():
         'perception_device', default_value='cuda:0',
         description="Device for YOLO inference: 'cuda:0' (GPU) or 'cpu'")
 
+    target_class_arg = DeclareLaunchArgument(
+        'target_class', default_value='plastic_bottle',
+        description="YOLO class to track: 'ball', 'carton' or 'plastic_bottle' (best.pt)")
+
     gazebo = ExecuteProcess(
         cmd=['gz', 'sim', '-v4', '-r', LaunchConfiguration('world')],
         output='screen'
@@ -132,7 +136,8 @@ def generate_launch_description():
         package='perception',
         executable='perception_node',
         parameters=[{'use_sim_time': True,
-                     'device': LaunchConfiguration('perception_device')}],
+                     'device': LaunchConfiguration('perception_device'),
+                     'target_class': LaunchConfiguration('target_class')}],
         output='screen'
     )
 
@@ -184,6 +189,7 @@ def generate_launch_description():
         world_arg,
         fcu_url_arg,
         perception_device_arg,
+        target_class_arg,
         gazebo,
 
         TimerAction(period=T_BRIDGES_MAVROS, actions=[bridges, mavros]),

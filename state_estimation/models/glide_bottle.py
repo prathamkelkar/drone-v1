@@ -2,10 +2,11 @@
 """Spawn an upright plastic bottle at (X, Y, Z) gliding at constant velocity, no gravity.
 
 Usage: glide_bottle.py [X] [Y] [Z] [VX] [VY] [VZ] [--mesh]
-       defaults: 2.5 -1.6 4.4  0 0.8 0      (WORLD env var selects the world, default 'iris_runway')
+       defaults: 1.6 2.5 4.4  -0.8 0 0      (WORLD env var selects the world, default 'iris_runway')
 
-Same motion as glide_ball.py: Gazebo frame (x east, y north, z up), 2.5 m ahead
-of the drone, 1.6 m to the right, at camera height, moving left at 0.8 m/s.
+Same motion as glide_ball.py: Gazebo frame (x east, y north, z up), drone
+facing +y; 2.5 m ahead of it (+y), 1.6 m to the right (+x), at camera height,
+moving left (-x) at 0.8 m/s.
 
 Bottle body diameter is 0.22 m = KNOWN_OBJECT_WIDTH in object_localizer.py,
 so the detection box width (bottle seen from the side) gives the right range.
@@ -32,7 +33,7 @@ MESH_SCALE = 0.22 / 0.1089   # mesh diameter 0.1089 m -> 0.22 m
 
 use_mesh = '--mesh' in sys.argv
 a = [float(v) for v in sys.argv[1:] if v != '--mesh'][:6]
-defaults = [2.5, -1.6, 4.4, 0.0, 0.8, 0.0]
+defaults = [1.6, 2.5, 4.4, -0.8, 0.0, 0.0]
 x, y, z, vx, vy, vz = a + defaults[len(a):]
 world = os.environ.get('WORLD', 'iris_runway')
 

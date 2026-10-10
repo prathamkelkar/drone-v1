@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Spawn the drop ball at (X, Y, Z) and kick it straight up at V0 m/s.
 
-Usage: launch_ball.py [X] [Y] [Z] [V0]      (defaults: 3 -0.6 4 6)
+Usage: launch_ball.py [X] [Y] [Z] [V0]      (defaults: 0.6 3 4 6)
+       Gazebo frame (x east, y north, z up). The drone spawns facing +y, so
+       the default is 3 m ahead of it and 0.6 m to its right.
        WORLD (env, default iris_runway = ardupilot/worlds/drone_world.sdf)
        selects the Gazebo world name; PHYSICS_DT (env, default 0.001) must
        match the world's <max_step_size>.
@@ -28,8 +30,8 @@ from gz.transport13 import Node
 MASS = 0.43
 DT = float(os.environ.get('PHYSICS_DT', '0.001'))
 
-x = float(sys.argv[1]) if len(sys.argv) > 1 else 3.0
-y = float(sys.argv[2]) if len(sys.argv) > 2 else -0.6
+x = float(sys.argv[1]) if len(sys.argv) > 1 else 0.6
+y = float(sys.argv[2]) if len(sys.argv) > 2 else 3.0
 z = float(sys.argv[3]) if len(sys.argv) > 3 else 4.0
 v0 = float(sys.argv[4]) if len(sys.argv) > 4 else 6.0
 world = os.environ.get('WORLD', 'iris_runway')

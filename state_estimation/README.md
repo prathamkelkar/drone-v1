@@ -58,7 +58,7 @@ staged with delays (constants `T_*` at the top of the file). ArduPilot SITL is
 | 30 | `trajectory_predictor_ellipsoid`, `rotate_command` |
 | 35 | `offboard_inercept_node` (GUIDED, arm, takeoff, intercept) |
 
-Arguments: `world`, `fcu_url` (default `udp://:14550@`), `perception_device` (`cuda:0`/`cpu`).
+Arguments: `world`, `fcu_url` (default `udp://:14550@`), `perception_device` (`cuda:0`/`cpu`), `target_class` (`ball`/`carton`/`plastic_bottle`).
 
 ## Gazebo models (`models/`)
 

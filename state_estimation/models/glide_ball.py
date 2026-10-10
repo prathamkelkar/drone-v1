@@ -2,11 +2,12 @@
 """Spawn the ball at (X, Y, Z) gliding at constant velocity (VX, VY, VZ), no gravity.
 
 Usage: glide_ball.py [X] [Y] [Z] [VX] [VY] [VZ]
-       defaults: 2.5 -1.6 4.4  0 0.8 0      (WORLD env var selects the world, default 'iris_runway')
+       defaults: 1.6 2.5 4.4  -0.8 0 0      (WORLD env var selects the world, default 'iris_runway')
 
-Gazebo frame (x east, y north, z up). Defaults put the ball 2.5 m ahead of the
-drone (assuming it faces +x), 1.6 m to the right of its heading, at camera
-height, moving left across the view at 0.8 m/s.
+Gazebo frame (x east, y north, z up). The drone spawns facing +y (yaw 90 deg
+in drone_world.sdf), so the defaults put the ball 2.5 m ahead of it (+y),
+1.6 m to the right of its heading (+x), at camera height, moving left across
+the view (-x) at 0.8 m/s.
 
 Uses Gazebo's VelocityControl system, which holds a model at a constant
 velocity. It is a model-level plugin, so no change to the world file is needed.
@@ -21,7 +22,7 @@ from gz.msgs10.entity_pb2 import Entity
 from gz.transport13 import Node
 
 a = [float(v) for v in sys.argv[1:7]]
-defaults = [2.5, -1.6, 4.4, 0.0, 0.8, 0.0]
+defaults = [1.6, 2.5, 4.4, -0.8, 0.0, 0.0]
 x, y, z, vx, vy, vz = a + defaults[len(a):]
 world = os.environ.get('WORLD', 'iris_runway')
 
