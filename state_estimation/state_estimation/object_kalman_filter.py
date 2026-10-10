@@ -18,7 +18,13 @@ class Object_Kalman_Filter(Node):
         # for objects that don't fall (static or constant-velocity), so noise
         # can never switch gravity on. The filter applies it along -z (ENU).
         self.declare_parameter('gravity', 9.81)
-        self.kf = KalmanFilter(g=self.get_parameter('gravity').value)
+        # False: the object is in free flight from the first detection, so
+        # gravity is applied immediately (parabolic model throughout).
+        # True: start with constant velocity and only switch gravity on once
+        # downward motion is seen (for objects that start at rest).
+        self.declare_parameter('gravity_gate', False)
+        self.kf = KalmanFilter(g=self.get_parameter('gravity').value,
+                               gravity_gate=self.get_parameter('gravity_gate').value)
 
         qos = QoSProfile(
                 reliability=ReliabilityPolicy.BEST_EFFORT,

@@ -31,11 +31,13 @@ Converts a 2D detection + camera intrinsics into a 3D pose in the `world` frame,
 - Publishes `estimation/pose_object_raw` (`geometry_msgs/PoseStamped`).
 
 ### `object_kalman_filter`
-A constant-velocity, gravity-gated Kalman filter (6-state: position + velocity).
+A constant-velocity / ballistic Kalman filter (6-state: position + velocity).
 The math is in `kalman_filter.py` (pure numpy, unit-tested in `test/test_kalman_gravity.py`).
 
 - Subscribes `/estimation/pose_object_raw`; publishes `/estimation/object_state` (`nav_msgs/Odometry`) with position, velocity and covariances.
-- Parameter `gravity`: positive magnitude (default 9.81; the launch file uses 0.0 for the constant-velocity test). It is applied as a **−z** acceleration (ENU), and only after the object is seen falling (`vz < −0.3` m/s).
+- Parameter `gravity`: positive magnitude (default 9.81; the launch file sets 0.0 or 9.81 from its `motion` argument). It is applied as a **−z** acceleration (ENU).
+- Parameter `gravity_gate` (default `false`): `false` applies gravity from the first detection (object already in free flight); `true` only once the object is seen falling (`vz < −0.3` m/s), for objects that start at rest.
+- `extended_kalman_filter.py`: work in progress (quadratic-drag EKF), not installed as an executable.
 
 ### `rotate_command`
 Computes the camera-relative yaw/pitch angle to the detected object: `angle = atan((pixel - principal_point) / focal_length)`.
@@ -54,20 +56,24 @@ staged with delays (constants `T_*` at the top of the file). ArduPilot SITL is
 | 0 | `gz sim` |
 | 10 | `ros_gz_bridge` (`/clock`, `/camera/image` → `/camera/image_raw`, `/camera/camera_info`), MAVROS (`mavros_node` with the stock ArduPilot config + `config/mavros_overrides.yaml`) |
 | 20 | `mavros_setup`, static TFs `world -> map` and `base_link -> camera_link`, `odom_to_tf` |
-| 25 | `perception_node`, `object_localizer`, `object_kalman_filter` |
+| 25 | `perception_without_nn` or `perception_node`, `object_localizer`, `object_kalman_filter` |
 | 30 | `trajectory_predictor_ellipsoid`, `rotate_command` |
 | 35 | `offboard_inercept_node` (GUIDED, arm, takeoff, intercept) |
 
-Arguments: `world`, `fcu_url` (default `udp://:14550@`), `perception_device` (`cuda:0`/`cpu`), `target_class` (`ball`/`carton`/`plastic_bottle`).
+Arguments: `world`, `fcu_url` (default `udp://:14550@`), `perception` (`hsv`/`yolo`), `motion` (`linear`/`ballistic`: Kalman filter gravity 0/9.81 and the predictor's object model), `perception_device` (`cuda:0`/`cpu`), `target_class` (`ball`/`carton`/`plastic_bottle`), `yolo_model`.
+
+The drone limits shared by the predictor and the interceptor (`A_MAX_*`, `V_MAX_*`, `TILT_DELAY`) are constants at the top of the file and must stay within the ArduPilot limits in `scripts/intercept.parm`.
 
 ## Gazebo models (`models/`)
 
 - `ardupilot/iris_cam`, `ardupilot/worlds/drone_world.sdf` (world name `iris_runway`): the ArduPilot iris with a forward camera.
-- `drop_ball.sdf`, `plastic_bottle.sdf` and the spawner scripts `launch_ball.py`, `glide_ball.py`, `glide_bottle.py` (Gazebo transport; `WORLD` env var selects the world, default `iris_runway`).
+- `drop_ball.sdf` (orange, for the HSV detector), `plastic_bottle.sdf` and the spawner scripts `launch_ball.py` (`X Y Z V0` kicks straight up, `X Y Z VX VY VZ` throws in any direction), `glide_ball.py`, `glide_bottle.py` (Gazebo transport; `WORLD` env var selects the world, default `iris_runway`).
 
 ## Tools
 
 - `tools/plot_kf.py`: records raw detections vs. filter output and plots x, y, z (ENU) and velocity.
+- `tools/intercept_check.py`: closest approach between `iris_cam` and the object, from Gazebo's own poses (start it before spawning the object).
+- `tools/spectate.py`: three spectator cameras plus the drone's camera in one window, recorded to an mp4 in slow motion.
 
 ## Dependencies
 

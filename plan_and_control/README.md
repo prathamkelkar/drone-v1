@@ -21,9 +21,9 @@ single shared-thrust-vector motion.
 - Subscribes:
   - `/estimation/object_state` (`nav_msgs/Odometry`): object position/velocity
   - `/mavros/local_position/odom` (`nav_msgs/Odometry`, best-effort; parameter `drone_odom_topic`): drone position (only position is used)
-- Publishes `/planning/intercept_ellipsoid` (`geometry_msgs/PoseStamped`, ENU, header copied from the object state)
-- Parameters: `a_max_h`, `a_max_v`, `v_max_h`, `v_max_v`, `h_target`, `object_model` (`ballistic`, `constant_velocity` or `static`), `intercept_mode` (`ellipsoid` or `independent_axes`: which solver's result is published; both are computed for comparison logging)
-- Solves the ballistic quadratic analytically for the time the object reaches `h_target`, then root-finds (`scipy.optimize.brentq`) the self-consistent intercept time.
+- Publishes `/planning/intercept_ellipsoid` (`geometry_msgs/PoseStamped`, ENU, frame `world`). The header stamp is the **predicted arrival time** (now + t*), which the interceptor's thrust mode aims for. The object state is first propagated from its image capture stamp to now, so perception latency doesn't make the plan late.
+- Parameters: `a_max_h`, `a_max_v`, `v_max_h`, `v_max_v`, `h_target`, `tilt_delay` (added to the drone's flight time; = interceptor's `tilt_delay`), `object_model` (`ballistic`, `constant_velocity` or `static`), `intercept_mode` (`ellipsoid` or `independent_axes`: which solver's result is published; both are computed for comparison logging)
+- Solves the ballistic quadratic analytically for the time the object reaches `h_target`, then finds the **earliest** self-consistent intercept time: the window is sampled first and `scipy.optimize.brentq` refines the first sign change (bracketing only the two ends missed intercepts feasible early but not late).
 - The core math (`InterceptSolver`) has no ROS dependency.
 
 ## `trajectory_predictor_independent_axes`
@@ -38,10 +38,10 @@ launch file.
 
 ## Known issues
 
-- Acceleration/velocity limit defaults are placeholders. See the `TODO` in
-  each node's constructor to source them from ArduPilot parameters
-  (`WPNAV_ACCEL`, `WPNAV_SPEED`, `WPNAV_SPEED_UP/DN`, ...) or empirical
-  step-response testing.
+- The launch file sets the limits from the ArduPilot parameters in
+  `scripts/intercept.parm`; they are derived from the parameter docs, not yet
+  verified by step-response tests in Gazebo. The independent-axes node still
+  has placeholder defaults.
 
 ## Dependencies
 
@@ -54,4 +54,5 @@ ros2 run plan_and_control trajectory_predictor_ellipsoid --ros-args -p intercept
 ```
 
 Normally started by `state_estimation`'s `full_pipeline.launch.py` (with
-`object_model: constant_velocity`, `h_target: 4.0`, `intercept_mode: independent_axes`).
+`object_model` from its `motion` argument, `h_target: 0.3`,
+`intercept_mode: ellipsoid` and the shared drone limits).

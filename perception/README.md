@@ -5,6 +5,17 @@ incoming camera feed and publishes the single highest-confidence detection of
 the tracked class (parameter `target_class`) as a `vision_msgs/Detection2D`.
 It only depends on `/camera/image_raw`, so it is camera-agnostic.
 
+## Node: `perception_without_nn` (default in the launch file)
+
+HSV colour-threshold detector for the orange test ball (`drop_ball`,
+`glide_ball.py`), no neural network: threshold (`hsv_lower` / `hsv_upper`,
+default `[5,150,100]`..`[25,255,255]`) on a downscaled frame (`scale` 0.5),
+morphological clean-up, then the largest round-enough blob (`min_area_px`,
+`min_fill`) is published on `/detected_object` as class `ball`, with its
+enclosing circle as the bounding box. `publish_debug: true` publishes the mask
+on `/perception/debug_mask`. Note the static `target_ball` in
+`drone_world.sdf` is pure red (hue 0), outside the default hue range.
+
 ## Node: `perception_node`
 
 **Subscribes**

@@ -59,8 +59,22 @@ def test_type_masks():
     assert not su.position_type_mask(True) & 7    # position used
 
 
+def test_velocity_and_accel_masks():
+    # velocity only: position + accel ignored
+    assert su.velocity_type_mask(False, True) == 7 | 448 | 2048
+    # velocity + accel feedforward: only position ignored
+    assert su.velocity_type_mask(True, True) == 7 | 2048
+    # accel only: position + velocity ignored
+    assert su.accel_type_mask(True) == 7 | 56 | 2048
+    assert su.accel_type_mask(False) == 7 | 56 | 2048 | 1024
+    for m in (su.velocity_type_mask(True, False), su.accel_type_mask(True)):
+        assert not m & 512  # FORCE never set
+
+
 def test_mask_bits_match_mavros():
     pt = pytest.importorskip('mavros_msgs.msg').PositionTarget
+    assert su.IGNORE_PX == pt.IGNORE_PX
+    assert su.IGNORE_PZ == pt.IGNORE_PZ
     assert su.IGNORE_VX == pt.IGNORE_VX
     assert su.IGNORE_AFZ == pt.IGNORE_AFZ
     assert su.IGNORE_YAW == pt.IGNORE_YAW

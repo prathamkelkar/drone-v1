@@ -35,7 +35,7 @@ def test_free_fall_after_0_3_s(rate_hz):
 
 
 def test_gravity_pulls_down_in_predict():
-    kf = KalmanFilter(g=G)
+    kf = KalmanFilter(g=G, gravity_gate=True)
     kf.initialize(np.array([[0.0], [0.0], [Z0]]))
     kf.x[5, 0] = -1.0          # already falling -> gate opens
     kf.predict(0.1)
@@ -45,12 +45,21 @@ def test_gravity_pulls_down_in_predict():
 
 
 def test_rising_object_does_not_open_gate():
-    kf = KalmanFilter(g=G)
+    kf = KalmanFilter(g=G, gravity_gate=True)
     kf.initialize(np.array([[0.0], [0.0], [Z0]]))
     kf.x[5, 0] = +2.0          # moving up (ENU) -> not a fall
     kf.predict(0.1)
     assert not kf.in_flight
     assert kf.x[5, 0] == pytest.approx(2.0)
+
+
+def test_no_gate_applies_gravity_from_the_start():
+    kf = KalmanFilter(g=G)
+    kf.initialize(np.array([[0.0], [0.0], [Z0]]))
+    kf.x[5, 0] = +2.0          # rising (thrown up): still ballistic
+    kf.predict(0.1)
+    assert kf.in_flight
+    assert kf.x[5, 0] == pytest.approx(2.0 - G * 0.1)
 
 
 def test_zero_gravity_is_constant_velocity():

@@ -38,7 +38,8 @@ SDF = f"""<?xml version="1.0"?>
         <mass>0.43</mass>
         <inertia><ixx>0.00208</ixx><iyy>0.00208</iyy><izz>0.00208</izz></inertia>
       </inertial>
-      <visual name="visual"><geometry><sphere><radius>0.11</radius></sphere></geometry></visual>
+      <visual name="visual"><geometry><sphere><radius>0.11</radius></sphere></geometry>
+        <material><ambient>1.0 0.4 0.0 1</ambient><diffuse>1.0 0.4 0.0 1</diffuse><specular>0.2 0.2 0.2 1</specular></material></visual>
     </link>
   </model>
 </sdf>"""

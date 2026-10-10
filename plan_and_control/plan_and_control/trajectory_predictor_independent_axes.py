@@ -119,7 +119,7 @@ class TrajectoryPredictorIndependentAxesNode(Node):
         super().__init__('trajectory_predictor_independent_axes_node')
 
         # TODO: replace with real per-axis values from ArduPilot params
-        # (WPNAV_ACCEL, WPNAV_SPEED, ...) or empirical testing.
+        # (WP_ACC, WP_SPD, ...) or empirical testing.
         self.declare_parameter('a_max_x', 4.0)
         self.declare_parameter('a_max_y', 4.0)
         self.declare_parameter('a_max_z', 2.0)

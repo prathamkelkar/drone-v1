@@ -39,6 +39,7 @@ from scipy.optimize import brentq
 
 import rclpy
 from rclpy.node import Node
+from rclpy.duration import Duration
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
@@ -50,7 +51,7 @@ class InterceptSolver:
     def __init__(self, g=9.81,
                  a_max_h=5.0, a_max_v=2.0,
                  v_max_h=20.0, v_max_v=3.0,
-                 h_target=0.0, max_time=5.0):
+                 h_target=0.0, max_time=5.0, reaction_delay=0.0):
         self.g = g
         # Search horizon (s) when the object never lands (g == 0, i.e. a
         # constant-velocity object); with gravity the horizon is t_ground.
@@ -60,6 +61,7 @@ class InterceptSolver:
         self.v_max_h = v_max_h   # max horizontal cruise speed, m/s
         self.v_max_v = v_max_v   # max vertical cruise speed, m/s
         self.h_target = h_target  # intercept height (0 = ground)
+        self.reaction_delay = reaction_delay  # time before commanded acceleration takes effect
 
     def p_object(self, t, p0, v0):
         """Ballistic position at time t, given initial position/velocity."""
@@ -123,16 +125,20 @@ class InterceptSolver:
 
     def flight_time(self, distance, a_eff, v_eff):
         """Time for the drone to cover `distance` starting from rest,
-        accelerating at a_eff up to v_eff, then cruising."""
+        after reaction_delay, accelerating at a_eff up to v_eff, then
+        cruising."""
+        if distance <= 1e-9:
+            return 0.0
         d_accel = v_eff**2 / (2 * a_eff)
 
         if distance >= d_accel:
             t_accel = v_eff / a_eff
             d_remaining = distance - d_accel
             t_cruise = d_remaining / v_eff
-            return t_accel + t_cruise
+            travel_time = t_accel + t_cruise
         else:
-            return np.sqrt(2 * distance / a_eff)
+            travel_time = np.sqrt(2 * distance / a_eff)
+        return self.reaction_delay + travel_time
 
     def g_func(self, t, p0, v0, drone_start):
         """Root-find target: t_drone_needed(t) - t. Zero at the
@@ -152,25 +158,33 @@ class InterceptSolver:
 
         return t_drone - t
 
+    def _earliest_root(self, g, t_end, args, samples=200):
+        """Earliest t in (0, t_end] with g(t) <= 0, i.e. the first moment the
+        drone can be where the object is. g is sampled on a grid first:
+        bracketing only the two ends of the window misses intercepts that are
+        feasible in the middle but not at the end (e.g. a falling object that
+        the drone can reach early on but not once it has dropped further)."""
+        ts = np.linspace(1e-6, t_end, samples)
+        prev_t, prev_g = ts[0], g(ts[0], *args)
+        if prev_g <= 0.0:
+            return prev_t
+        for t in ts[1:]:
+            gt = g(t, *args)
+            if gt <= 0.0:
+                return brentq(g, prev_t, t, args=args)
+            prev_t, prev_g = t, gt
+        return None
+
     def solve(self, p0, v0, drone_start):
-        """Returns (t_star, p_intercept) or (None, None) if no
-        feasible intercept exists within the object's flight time."""
+        """Returns (t_star, p_intercept) for the earliest feasible intercept,
+        or (None, None) if none exists within the object's flight time."""
         t_ground = self.time_horizon(p0[2], v0[2])
         if t_ground is None:
             return None, None
-
-        try:
-            t_star = brentq(
-                self.g_func, 1e-6, t_ground,
-                args=(p0, v0, drone_start)
-            )
-        except ValueError:
-            # g_func doesn't change sign across the bracket — no
-            # feasible intercept with current drone capability.
+        t_star = self._earliest_root(self.g_func, t_ground, (p0, v0, drone_start))
+        if t_star is None:
             return None, None
-
-        p_intercept = self.p_object(t_star, p0, v0)
-        return t_star, p_intercept
+        return t_star, self.p_object(t_star, p0, v0)
 
     # --- Independent-axes comparison model ------------------------------
     # NOTE: does NOT correspond to a straight-line path — axes that
@@ -197,31 +211,28 @@ class InterceptSolver:
         t_ground = self.time_horizon(p0[2], v0[2])
         if t_ground is None:
             return None, None
-
-        try:
-            t_star = brentq(
-                self.g_func_independent_axes, 1e-6, t_ground,
-                args=(p0, v0, drone_start)
-            )
-        except ValueError:
+        t_star = self._earliest_root(self.g_func_independent_axes, t_ground,
+                                     (p0, v0, drone_start))
+        if t_star is None:
             return None, None
-
-        p_intercept = self.p_object(t_star, p0, v0)
-        return t_star, p_intercept
+        return t_star, self.p_object(t_star, p0, v0)
 
 
 class TrajectoryPredictorNode(Node):
     def __init__(self):
         super().__init__('trajectory_predictor_node')
 
-        # TODO: replace with real values from ArduPilot params
-        # (WPNAV_ACCEL, WPNAV_ACCEL_Z, WPNAV_SPEED, WPNAV_SPEED_UP/DN)
-        # or empirical step-response testing in Gazebo.
+        # Defaults for running the node on its own; full_pipeline.launch.py
+        # sets them from the ArduPilot limits in scripts/intercept.parm
+        # (ATC_ANGLE_MAX, WP_ACC_Z, WP_SPD, WP_SPD_UP/DN).
         self.declare_parameter('a_max_h', 5.0)
         self.declare_parameter('a_max_v', 5.0)
         self.declare_parameter('v_max_h', 20.0)
         self.declare_parameter('v_max_v', 3.0)
         self.declare_parameter('h_target', 0.0)
+        # Time for ArduPilot/the vehicle to begin producing the planned
+        # acceleration. This must match the interceptor's tilt_delay.
+        self.declare_parameter('tilt_delay', 0.25)
         self.declare_parameter('intercept_mode', 'ellipsoid')  # 'ellipsoid' or 'independent_axes'
         # How the object moves: 'ballistic' (gravity only, thrown/dropped),
         # 'constant_velocity' (no gravity, e.g. a ball gliding sideways) or
@@ -235,6 +246,7 @@ class TrajectoryPredictorNode(Node):
             v_max_h=self.get_parameter('v_max_h').value,
             v_max_v=self.get_parameter('v_max_v').value,
             h_target=self.get_parameter('h_target').value,
+            reaction_delay=self.get_parameter('tilt_delay').value,
         )
 
         # Same drone limits, but g=0 so the object keeps its velocity.
@@ -245,6 +257,7 @@ class TrajectoryPredictorNode(Node):
             v_max_h=self.get_parameter('v_max_h').value,
             v_max_v=self.get_parameter('v_max_v').value,
             h_target=self.get_parameter('h_target').value,
+            reaction_delay=self.get_parameter('tilt_delay').value,
         )
 
         self.drone_position = None
@@ -283,7 +296,8 @@ class TrajectoryPredictorNode(Node):
             self.get_logger().warn('No drone position yet — skipping solve')
             return
 
-        # Object state is in the ENU 'world' frame (z up), as the solver expects.
+        # Object state is in the ENU 'world' frame (z up), as the solver
+        # expects, at the image capture time.
         p0 = np.array([
             msg.pose.pose.position.x,
             msg.pose.pose.position.y,
@@ -297,6 +311,21 @@ class TrajectoryPredictorNode(Node):
 
         model = self.get_parameter('object_model').value
         solver = self.solver_cv if model == 'constant_velocity' else self.solver
+
+        # The Kalman state retains the image capture timestamp. Perception and
+        # transport add significant latency, while drone odometry is current.
+        # Propagate the object to the current sim time before solving so both
+        # states share the same time origin and now + t_star is the real
+        # predicted arrival time.
+        now = self.get_clock().now()
+        state_time = rclpy.time.Time.from_msg(msg.header.stamp)
+        state_age = max((now - state_time).nanoseconds * 1e-9, 0.0)
+        if model == 'ballistic':
+            p0 = solver.p_object(state_age, p0, v0)
+            v0 = v0.copy()
+            v0[2] -= solver.g * state_age
+        elif model == 'constant_velocity':
+            p0 = p0 + v0 * state_age
 
         if model == 'static':
             # Stationary object: fly straight to where it is.
@@ -332,6 +361,9 @@ class TrajectoryPredictorNode(Node):
 
         out = PoseStamped()
         out.header = msg.header
+        intercept_time = now + Duration(seconds=float(t_star))
+        out.header.stamp = intercept_time.to_msg()
+        out.header.frame_id = 'world'
         out.pose.position.x = float(p_intercept[0])
         out.pose.position.y = float(p_intercept[1])
         out.pose.position.z = float(p_intercept[2])  # ENU, same frame as the object state

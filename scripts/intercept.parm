@@ -1,0 +1,35 @@
+# ArduCopter limits for the intercept pipeline, loaded by start_sitl.sh
+# (sim_vehicle.py --add-param-file). ArduPilot equivalent of the PX4_PARAM_*
+# limits the teleop branch set for the x500. The interceptor's / predictor's
+# a_max_* / v_max_* (full_pipeline.launch.py) must stay at or below these.
+# Names/units are those of the ArduPilot checked out in ~/ardupilot (4.7-dev:
+# SI units, WP_* not WPNAV_*); older releases use WPNAV_SPEED etc. in cm.
+# UNVERIFIED in sim: values chosen from the parameter docs, not flight-tested.
+
+# Lean angle limit (deg). The iris has thrust/weight ~1.5, so it can hold
+# altitude up to ~48 deg; ArduPilot also reduces lean when it runs out of
+# thrust headroom. 45 deg -> g*tan(45) = 9.8 m/s^2 horizontal. This is what
+# caps acceleration-only GUIDED targets (thrust chase mode).
+ATC_ANGLE_MAX      45    # default 30 (range 10-80)
+PSC_ANGLE_MAX      45    # 0 = use ATC_ANGLE_MAX; range 0-45
+
+# Speed / acceleration limits GUIDED uses to shape position and velocity
+# targets (velocity chase mode, braking, flying home).
+WP_SPD             20    # m/s, parameter maximum
+WP_SPD_UP           8    # m/s
+WP_SPD_DN           4    # m/s
+WP_ACC              5    # m/s^2, parameter maximum
+WP_ACC_Z            5    # m/s^2, parameter maximum
+
+# Jerk limits (m/s^3): ArduPilot ramps every acceleration target at these,
+# so they set how fast a commanded acceleration takes effect (TILT_DELAY in
+# the launch file).
+PSC_NE_JERK        20    # default 5 -> ~2 s to reach 9.8 m/s^2
+PSC_D_JERK         20    # default 5
+
+# Bit 4: don't stabilize horizontal position in GUIDED velocity/acceleration
+# modes (only velocity), like PX4 offboard. The guidance re-plans from the
+# actual state every cycle, so holding the integrated reference position
+# would only fight it. Bit 5 (no velocity stabilization) must stay off:
+# velocity setpoints need it.
+GUID_OPTIONS       16

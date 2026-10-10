@@ -4,7 +4,8 @@ A quadcopter that detects a thrown or falling object, predicts its trajectory
 and flies to intercept it.
 
 ```
-/camera/image_raw -> perception_node (YOLO) -> object_localizer (2D -> 3D via TF)
+/camera/image_raw -> perception_without_nn (HSV) or perception_node (YOLO)
+  -> object_localizer (2D -> 3D via TF)
   -> object_kalman_filter -> trajectory_predictor_ellipsoid -> offboard_inercept_node
   -> MAVROS (/mavros/setpoint_raw/local) -> ArduPilot (GUIDED)
 ```
@@ -17,7 +18,7 @@ optical frame).
 
 | Package | Contents |
 |---|---|
-| `perception` | YOLO detector (`perception_node`) |
+| `perception` | detectors: HSV colour blob (`perception_without_nn`, default) and YOLO (`perception_node`) |
 | `state_estimation` | `odom_to_tf`, `object_localizer`, `object_kalman_filter`, `rotate_command`, `mavros_setup`, the Gazebo models/world and `full_pipeline.launch.py` |
 | `plan_and_control` | intercept-point solvers |
 | `intercept` | flies the drone in GUIDED mode via MAVROS |
@@ -71,8 +72,11 @@ reboot
    ```bash
    scripts/start_sitl.sh
    # = source ~/venv-ardupilot/bin/activate && cd ~/ardupilot/ArduCopter && \
-   #   sim_vehicle.py -v ArduCopter -f gazebo-iris --model JSON --console --out 127.0.0.1:14550
+   #   sim_vehicle.py -v ArduCopter -f gazebo-iris --model JSON --console --out 127.0.0.1:14550 \
+   #     --add-param-file=scripts/intercept.parm
    ```
+   `scripts/intercept.parm` raises ArduPilot's lean angle, speed,
+   acceleration and jerk limits for the interceptor (see `intercept/README.md`).
 3. **T3, the pipeline:**
    ```bash
    source ~/ros2_ws/install/setup.bash
@@ -80,7 +84,11 @@ reboot
    ```
    Launch arguments: `world` (SDF path), `fcu_url` (default `udp://:14550@`;
    real drone `/dev/ttyAMA0:921600`), `perception_device` (`cuda:0` or `cpu`),
-   `target_class` (`ball`, `carton` or `plastic_bottle`; default `plastic_bottle`).
+   `perception` (`hsv`, default: orange ball, or `yolo`), `motion` (`linear`,
+   default, for `glide_*.py`; `ballistic` for `launch_ball.py`: sets the
+   Kalman filter gravity and the predictor's object model together),
+   `target_class` (`ball`, `carton` or `plastic_bottle`; default `plastic_bottle`)
+   and `yolo_model` (default `~/ros2_ws/best.pt`), both only for `perception:=yolo`.
    Stage delays are the `T_*` constants at the top of the launch file (the
    sim runs at ~36% real time, so they are generous).
 4. **Flight.** The interceptor (started at t≈35 s) sets GUIDED, arms, takes off to
@@ -96,6 +104,14 @@ reboot
 ATTITUDE / ATTITUDE_QUATERNION / LOCAL_POSITION_NED at 30 Hz; without it
 odometry arrives at ~2.7 Hz. It retries until MAVROS and the FCU are up, so
 SITL may be started before or after the launch.
+
+5. **A target.** With the drone hovering, spawn an object in front of it,
+   e.g. `state_estimation/models/glide_ball.py` (with `motion:=linear`) or
+   `state_estimation/models/launch_ball.py 0.3 2.0 3.0 0 0 5.0` (with
+   `motion:=ballistic`). `state_estimation/tools/intercept_check.py` (start it
+   first) reports the closest approach from Gazebo's own poses;
+   `state_estimation/tools/spectate.py` records the attempt from three
+   spectator cameras plus the drone's.
 
 ## Quick checks
 
