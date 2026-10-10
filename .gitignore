@@ -62,9 +62,6 @@ venv.bak/
 # Documentation
 docs/_build/
 
-cd ~/ros2_ws
-cat > .gitignore << 'EOF'
-build/
+# colcon workspace output
 install/
 log/
-EOF

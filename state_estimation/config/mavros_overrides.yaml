@@ -1,0 +1,10 @@
+# Loaded AFTER mavros's own apm_pluginlists.yaml and apm_config.yaml (see
+# full_pipeline.launch.py), so anything here overrides the stock ArduPilot
+# config. Same /**/ wildcard style as apm_config.yaml.
+
+# odom_to_tf is the only publisher of map -> base_link. apm_config.yaml
+# already defaults tf.send to false; pin it here so an upstream change
+# cannot give us two TF publishers. mavros_setup re-applies it at runtime.
+/**/local_position:
+  ros__parameters:
+    tf.send: false

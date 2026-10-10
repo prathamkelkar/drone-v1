@@ -27,8 +27,9 @@ class OdomToTF(Node):
 
     def odom_callback(self, msg: Odometry):
         t = TransformStamped()
-        # Use the message's own stamp so TF lines up with the data that produced it
-        t.header.stamp = msg.header.stamp
+        # Stamp with the node clock (sim time), not msg.header.stamp: MAVROS
+        # stamps with its own clock, which is not the /clock the pipeline uses.
+        t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = msg.header.frame_id or 'map'
         t.child_frame_id = msg.child_frame_id or 'base_link'
 

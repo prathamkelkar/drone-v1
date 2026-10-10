@@ -1,91 +1,125 @@
+"""
+Full intercept pipeline on ArduPilot SITL + Gazebo Harmonic + MAVROS.
+
+ArduPilot SITL (sim_vehicle.py) is NOT started here: it needs the
+~/venv-ardupilot venv and an interactive MAVProxy prompt, so run it in its
+own terminal (see README.md / scripts/start_sitl.sh) before or right after
+starting this launch file.
+
+Startup is staged with TimerActions. The sim runs at ~36% real time, so the
+delays below are generous; tune them in one place (the T_* constants).
+"""
+import os
+
 from launch import LaunchDescription
 from launch.actions import ExecuteProcess, TimerAction, DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-import os
+from ament_index_python.packages import get_package_share_directory
+
+DEFAULT_WORLD = os.path.expanduser(
+    '/mnt/c/Users/User/OneDrive/Documents/GitHub/drone-v1/'
+    'state_estimation/models/ardupilot/worlds/drone_world.sdf')
+
+# SITL over UDP. On the real drone: /dev/ttyAMA0:921600
+DEFAULT_FCU_URL = 'udp://:14550@'
+
+# Launch-time delays (wall seconds after `ros2 launch`).
+T_BRIDGES_MAVROS = 10.0   # ros_gz bridges + MAVROS
+T_SETUP_TF = 20.0         # mavros_setup helper, static TFs, odom_to_tf
+T_PERCEPTION = 25.0       # perception, localizer, Kalman filter
+T_PREDICTION = 30.0       # rotate_command
+
 
 def generate_launch_description():
 
-    micro_xrce_agent = ExecuteProcess(
-        cmd=['MicroXRCEAgent', 'udp4', '-p', '8888'],
+    world_arg = DeclareLaunchArgument(
+        'world', default_value=DEFAULT_WORLD,
+        description='Path to the Gazebo world SDF')
+
+    fcu_url_arg = DeclareLaunchArgument(
+        'fcu_url', default_value=DEFAULT_FCU_URL,
+        description='MAVROS FCU URL (SITL: udp://:14550@, real drone: /dev/ttyAMA0:921600)')
+
+    perception_device_arg = DeclareLaunchArgument(
+        'perception_device', default_value='cuda:0',
+        description="Device for YOLO inference: 'cuda:0' (GPU) or 'cpu'")
+
+    gazebo = ExecuteProcess(
+        cmd=['gz', 'sim', '-v4', '-r', LaunchConfiguration('world')],
         output='screen'
     )
 
-    mavproxy = ExecuteProcess(
-        cmd=['mavproxy.py', '--master=udp:127.0.0.1:14550'],
-        output='screen'
-    )
-
-    px4_dir_arg = DeclareLaunchArgument(
-        'px4_dir',
-        default_value=os.path.expanduser('~/PX4-Autopilot'),
-        description='Path to PX4-Autopilot directory'
-    )
-
-    px4_gazebo = ExecuteProcess(
-        cmd=['make', 'px4_sitl', 'gz_x500_depth'],
-        cwd=[LaunchConfiguration('px4_dir')],
-        output='screen'
-    )
-
-    clock_bridge = ExecuteProcess(
-        cmd=[
-            'ros2', 'run', 'ros_gz_bridge', 'parameter_bridge',
-            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock'
+    # Same as `ros2 launch mavros apm.launch`, but with our overrides layered
+    # on top of the stock ArduPilot config (later files win).
+    mavros_share = get_package_share_directory('mavros')
+    mavros = Node(
+        package='mavros',
+        executable='mavros_node',
+        parameters=[
+            os.path.join(mavros_share, 'launch', 'apm_pluginlists.yaml'),
+            os.path.join(mavros_share, 'launch', 'apm_config.yaml'),
+            os.path.join(get_package_share_directory('state_estimation'),
+                         'config', 'mavros_overrides.yaml'),
+            {
+                'fcu_url': LaunchConfiguration('fcu_url'),
+                'gcs_url': '',
+                'tgt_system': 1,
+                'tgt_component': 1,
+                'fcu_protocol': 'v2.0',
+            },
         ],
         output='screen'
     )
 
-    image_bridge = ExecuteProcess(
+    # Waits for MAVROS/FCU, then forces tf.send=false and requests 30 Hz
+    # ATTITUDE / ATTITUDE_QUATERNION / LOCAL_POSITION_NED; retries, then exits.
+    mavros_setup = Node(
+        package='state_estimation',
+        executable='mavros_setup',
+        parameters=[{'message_ids': [30, 31, 32], 'message_rate': 30.0}],
+        output='screen'
+    )
+
+    bridges = ExecuteProcess(
         cmd=[
             'ros2', 'run', 'ros_gz_bridge', 'parameter_bridge',
-            '/world/default/model/x500_depth_0/link/camera_link/sensor/IMX214/image@sensor_msgs/msg/Image[gz.msgs.Image',
-            '--ros-args', '-r',
-            '/world/default/model/x500_depth_0/link/camera_link/sensor/IMX214/image:=/camera/image_raw'
+            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+            '/camera/image@sensor_msgs/msg/Image[gz.msgs.Image',
+            '/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            '--ros-args', '-r', '/camera/image:=/camera/image_raw',
         ],
         output='screen'
     )
 
-    camera_info_bridge = ExecuteProcess(
-        cmd=[
-            'ros2', 'run', 'ros_gz_bridge', 'parameter_bridge',
-            '/world/default/model/x500_depth_0/link/camera_link/sensor/IMX214/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
-            '--ros-args', '-r',
-            '/world/default/model/x500_depth_0/link/camera_link/sensor/IMX214/camera_info:=/camera/camera_info'
-        ],
+    # world -> map: identity (MAVROS odom is in 'map', the rest of the code uses 'world')
+    world_to_map = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=['--frame-id', 'world', '--child-frame-id', 'map'],
+        parameters=[{'use_sim_time': True}],
         output='screen'
     )
 
+    # base_link (FLU: x fwd, y left, z up) -> camera_link (optical: x right,
+    # y down, z forward). Mount from iris_cam/model.sdf: 0.10 m forward, 0.02 m up.
     static_tf = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
-        # base_link is PX4's FRD body frame (x fwd, y right, z down). The
-        # localizer treats camera_link as an optical frame (x right, y down,
-        # z forward/depth), so rotate optical -> FRD: x_opt=y_body,
-        # y_opt=z_body, z_opt=x_body  (120 deg about (1,1,1)).
         arguments=[
-            # Mount from PX4's x500_depth/OakD-Lite model.sdf: camera at
-            # (0.12, 0.03, 0.242) + IMX214 sensor offset (0.012, -0.03, 0.019)
-            # in FLU -> (0.132, 0, 0.261 up) -> FRD z = -0.261.
-            '--x', '0.132', '--y', '0', '--z', '-0.261',
-            '--qx', '0.5', '--qy', '0.5', '--qz', '0.5', '--qw', '0.5',
+            '--x', '0.10', '--y', '0', '--z', '0.02',
+            '--qx', '-0.5', '--qy', '0.5', '--qz', '-0.5', '--qw', '0.5',
             '--frame-id', 'base_link', '--child-frame-id', 'camera_link',
         ],
         parameters=[{'use_sim_time': True}],
         output='screen'
     )
 
-    px4_odom_to_tf = Node(
+    odom_to_tf = Node(
         package='state_estimation',
-        executable='px4_odom_to_tf',
+        executable='odom_to_tf',
         parameters=[{'use_sim_time': True}],
         output='screen'
-    )
-
-    perception_device_arg = DeclareLaunchArgument(
-        'perception_device',
-        default_value='cuda:0',
-        description="Device for YOLO inference: 'cuda:0' (GPU) or 'cpu'"
     )
 
     perception_node = Node(
@@ -106,7 +140,8 @@ def generate_launch_description():
     kalman_filter = Node(
         package='state_estimation',
         executable='object_kalman_filter',
-        # gravity 0.0 for the constant-velocity test; 9.81 for thrown objects
+        # gravity 0.0 for the constant-velocity test; thrown objects need gravity
+        # (sign handled in Phase 4: falling = negative vz in ENU)
         parameters=[{'use_sim_time': True, 'gravity': 0.0}],
         output='screen'
     )
@@ -118,54 +153,31 @@ def generate_launch_description():
         output='screen'
     )
 
-    trajectory_predictor = Node(
-        package='plan_and_control',
-        executable='trajectory_predictor_ellipsoid',
-        # h_target: height (above the drone's start point, z-up) at which the
-        # ball is intercepted. Keep it equal to the interceptor's
-        # takeoff_height (4.0) so the drone catches the ball at hover height
-        # instead of having to descend to the ground in the ball's flight time.
-        parameters=[{'use_sim_time': True, 'object_model': 'constant_velocity', 'h_target': 4.0,
-                     'intercept_mode': 'independent_axes'}],
-        output='screen'
-    )
-
-    interceptor = Node(
-            package='intercept',
-            executable='offboard_inercept_node',
-            parameters=[{'use_sim_time': True}],
-            output='screen'
-    )
+    # Phase 4/5 (still on px4_msgs, re-enable once ported):
+    # trajectory_predictor_ellipsoid, offboard_inercept_node
 
     return LaunchDescription([
-        px4_dir_arg,
+        world_arg,
+        fcu_url_arg,
         perception_device_arg,
-        micro_xrce_agent,
-        mavproxy,
-        px4_gazebo,
+        gazebo,
 
-        TimerAction(period=15.0, actions=[
-            clock_bridge,
-            image_bridge,
-            camera_info_bridge
-        ]),
+        TimerAction(period=T_BRIDGES_MAVROS, actions=[bridges, mavros]),
 
-        TimerAction(period=20.0, actions=[
+        TimerAction(period=T_SETUP_TF, actions=[
+            mavros_setup,
+            world_to_map,
             static_tf,
-            px4_odom_to_tf
+            odom_to_tf,
         ]),
 
-        TimerAction(period=25.0, actions=[
+        TimerAction(period=T_PERCEPTION, actions=[
             perception_node,
             object_localizer,
             kalman_filter,
         ]),
-        TimerAction(period=30.0, actions=[
+
+        TimerAction(period=T_PREDICTION, actions=[
             rotate_command,
-            trajectory_predictor
-        ]),
-        TimerAction(period=35.0, actions=[
-            interceptor
         ]),
     ])
-
