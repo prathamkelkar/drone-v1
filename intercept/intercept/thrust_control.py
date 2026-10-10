@@ -1,21 +1,30 @@
-"""Our own intercept guidance and thrust/attitude control (no ROS imports).
+"""Intercept guidance (used by intercept_node.py) and a model of the
+drone's inner loops (used only by the offline simulator).
 
-Pipeline, run at the control rate (100 Hz) while chasing:
+Used by the node (thrust mode), every 100 Hz control cycle:
 
+  ball_position()        ball position t seconds after a state (p, v),
+                         straight line or ballistic depending on gravity.
   intercept_accel()      drone state + predicted ball path -> acceleration to
                          command and time-to-go. Finds the earliest time t at
                          which a constant acceleration within the drone's
                          limits puts the drone where the ball will be, starting
                          from the drone's *current* position and velocity. Re-
-                         solved every cycle, so it is closed-loop guidance.
+                         solved every cycle, so it is closed-loop guidance. The
+                         node sends the result to PX4 as an acceleration
+                         setpoint; PX4 turns it into tilt + thrust.
+
+Used only by test/sim_intercept_compare.py, to model what PX4 does with
+that acceleration (an earlier version of the node ran these itself and sent
+body rates + thrust to PX4, which went unstable with the ROS-to-PX4 delay):
+
   accel_to_attitude()    acceleration -> desired body z axis (tilt) + specific
                          thrust, with the tilt limit applied.
   attitude_rates()       desired vs current attitude -> body rate setpoint
                          (P control on the attitude error, like PX4's own
-                         attitude controller); PX4 then only tracks the rates.
-  motor_command()        specific thrust -> normalized motor command u for
-                         VehicleRatesSetpoint.thrust_body, using the simulated
-                         x500's rotor model (see below).
+                         attitude controller).
+  motor_command()        specific thrust -> normalized motor command u, using
+                         the simulated x500's rotor model (see below).
 
 All vectors are PX4 NED (z down). Quaternions are [w, x, y, z], body FRD ->
 NED, as in px4_msgs VehicleAttitude.
@@ -117,8 +126,10 @@ def rot_from_quat(q):
 
 def attitude_rates(q, q_des, k_rp=6.5, k_yaw=2.8, rate_max_rp=3.8, rate_max_yaw=3.5):
     """Body rate setpoint [p, q, r] (rad/s) from the attitude error, P control
-    with PX4's default gains (MC_ROLL_P/MC_PITCH_P 6.5, MC_YAW_P 2.8) and rate
-    limits (MC_ROLLRATE_MAX 220 deg/s)."""
+    like PX4's attitude controller. Defaults: gain 6.5 (the launch file's
+    MC_ROLL_P/MC_PITCH_P; PX4's own default is 4.0), yaw gain 2.8, roll/pitch
+    rate limit 3.8 rad/s (PX4's default MC_ROLLRATE_MAX of 220 deg/s; the
+    launch file raises it to 480 deg/s)."""
     qe = quat_mul(quat_conj(q), q_des)
     if qe[0] < 0:
         qe = -qe
@@ -134,51 +145,142 @@ def ball_position(t, p, v, g_ball):
     return p + v * t + np.array([0.0, 0.0, 0.5 * g_ball * t * t])
 
 
-def intercept_accel(x, v, ball_p, ball_v, g_ball, a_max_h, a_max_up, a_max_dn,
-                    delay=0.0, t_min=0.05, t_max=3.0, dt=0.01, coast_radius=0.15):
-    """Constant acceleration that puts the drone (position x, velocity v) on
-    the ball's predicted position at the earliest feasible time.
+def timed_intercept_accel(x, v, target, t_go, a_max_h, a_max_up, a_max_dn,
+                          delay=0.0, min_time=0.03):
+    """Acceleration required to reach ``target`` exactly ``t_go`` seconds
+    from now, limited to the drone's horizontal/up/down acceleration bounds.
 
-    For a candidate time t the required acceleration is
+    During ``delay`` the drone is assumed to keep its current velocity while
+    PX4 tilts. The commanded acceleration then acts for the remaining time.
+    Returns ``(acceleration, feasible)``; when the exact command exceeds a
+    limit it is scaled uniformly to the boundary as a best-effort command.
+    """
+    x = np.asarray(x, float)
+    v = np.asarray(v, float)
+    target = np.asarray(target, float)
+    t_go = float(t_go)
+
+    # Near the deadline there is no useful time left to model an additional
+    # tilt delay; PX4 is already responding to the preceding commands.
+    delay_used = delay if t_go > delay + min_time else 0.0
+    accel_time = max(t_go - delay_used, min_time)
+
+    # target = x + v*t_go + 0.5*a*accel_time^2
+    a = 2.0 * (target - x - v * t_go) / (accel_time * accel_time)
+    vertical_limit = a_max_dn if a[2] > 0.0 else a_max_up
+    effort = max(float(np.linalg.norm(a[:2])) / a_max_h,
+                 abs(float(a[2])) / vertical_limit)
+    feasible = effort <= 1.0
+    if not feasible:
+        a /= effort
+    return a, feasible
+
+
+def _cap_along(direction, lim_h, lim_up, lim_dn):
+    """Largest magnitude along unit `direction` within separate horizontal
+    and vertical (NED: up = -z) limits."""
+    m = np.inf
+    h = float(np.linalg.norm(direction[:2]))
+    if h > 1e-6:
+        m = min(m, lim_h / h)
+    lim_z = lim_up if direction[2] < 0 else lim_dn
+    if abs(direction[2]) > 1e-6:
+        m = min(m, lim_z / abs(direction[2]))
+    return m
+
+
+def intercept_accel(x, v, ball_p, ball_v, g_ball, a_max_h, a_max_up, a_max_dn,
+                    delay=0.0, t_min=0.05, t_max=3.0, dt=0.01, terminal_time=0.15):
+    """Acceleration that puts the drone (position x, velocity v) on the ball,
+    at full effort all the way to the ball - it never eases off or brakes
+    before reaching it.
+
+    Main phase: for a candidate time t the constant acceleration needed is
         a(t) = 2 * (ball(t) - x - v t) / t^2
     and it is feasible if its horizontal part is <= a_max_h and its vertical
-    part is within [-a_max_up, a_max_dn] (NED: negative = up). Returns
-    (a, t_go, feasible). If no t up to t_max is feasible, returns the
-    acceleration for the t that needs the least relative effort, saturated,
-    with feasible False (best effort: get as close as possible).
+    part is within [-a_max_up, a_max_dn] (NED: negative = up). The earliest
+    feasible t is used, which is a full-effort push. If none up to t_max is
+    feasible, the least-effort option is scaled to the limits (best effort).
+
+    Terminal phase: once the drone is closing on the ball and the closest
+    approach is at most terminal_time away, the same earliest-time plan is
+    made with no tilt delay and no minimum meeting time (the drone is
+    already tilted and pushing). With the t_min + delay floor the plan
+    asked for less than full acceleration at this range, so the drone eased
+    off and tilted back before reaching the ball. Only meeting times up to
+    closest approach are considered, so if an exact hit is out of reach the
+    command is the full-strength push that minimises the miss.
+
+    Never brake before the ball: while closing, any component of the command
+    against the direction of travel is removed.
 
     delay: time the drone needs to tilt before the commanded acceleration
-    takes effect. The plan starts from where drone and ball will be after
-    it (drone coasting), and the returned t_go includes it.
+    takes effect. The main-phase plan starts from where drone and ball will
+    be after it (drone coasting), and the returned t_go includes it.
+
+    Returns (a, t_go, feasible).
     """
-    # Already on course: if, coasting at the current velocity, the drone
-    # passes within coast_radius of the ball before a new command could take
-    # effect (delay + t_min), don't plan a later meeting - that would mean
-    # braking in the last moment. Keep going (zero extra acceleration;
-    # thrust still holds altitude).
     r = ball_p - x
+    speed = float(np.linalg.norm(v))
+    closing = speed > 0.3 and float(np.dot(r, v)) > 0.0
+
+    # Terminal phase: the drone is already tilted and pushing, so plan with
+    # no tilt delay and no minimum meeting time - the earliest-time solution
+    # is then a correctly-timed full-effort push right into the ball.
     v_rel = ball_v - v
     vv = float(np.dot(v_rel, v_rel))
-    if vv > 1e-6:
+    if closing and vv > 1e-6:
         t_c = -float(np.dot(r, v_rel)) / vv
-        if 0.0 <= t_c <= delay + t_min:
-            miss = ball_position(t_c, ball_p, ball_v, g_ball) - (x + v * t_c)
-            if np.linalg.norm(miss) <= coast_radius:
-                return np.zeros(3), t_c, True
+        if 0.0 < t_c <= terminal_time:
+            # Only meetings up to closest approach count. If an exact hit
+            # isn't reachable in that time, the best-effort result is the
+            # full-strength push that most reduces the miss - never a plan to
+            # turn around and come back later.
+            a, t, ok = intercept_accel(x, v, ball_p, ball_v, g_ball, a_max_h, a_max_up, a_max_dn,
+                                       0.0, min(dt, t_c), t_c + dt, min(dt, t_c), 0.0)
+            return _no_braking(a, v, closing), t, ok
+
     if delay > 0.0:
         a, t, ok = intercept_accel(x + v * delay, v, ball_position(delay, ball_p, ball_v, g_ball),
                                    ball_v + np.array([0.0, 0.0, g_ball * delay]), g_ball,
-                                   a_max_h, a_max_up, a_max_dn, 0.0, t_min, t_max, dt, coast_radius)
-        return a, t + delay, ok
-    best = None
-    for t in np.arange(t_min, t_max + 1e-9, dt):
+                                   a_max_h, a_max_up, a_max_dn, 0.0, t_min, t_max, dt, 0.0)
+        return _no_braking(a, v, closing), t + delay, ok
+    def required(t):
         a = 2.0 * (ball_position(t, ball_p, ball_v, g_ball) - x - v * t) / (t * t)
-        ah = np.linalg.norm(a[:2])
         az_lim = a_max_dn if a[2] > 0 else a_max_up
-        effort = max(ah / a_max_h, abs(a[2]) / az_lim)
+        return a, max(np.linalg.norm(a[:2]) / a_max_h, abs(a[2]) / az_lim)
+
+    best = None
+    t_prev = None
+    for t in np.arange(t_min, t_max + 1e-9, dt):
+        a, effort = required(t)
         if effort <= 1.0:
-            return a, t, True
+            # Refine the earliest feasible time between the last infeasible
+            # step and this one, so the push is exactly at the limit (near the
+            # ball the needed acceleration changes a lot within one dt step).
+            if t_prev is not None:
+                lo, hi = t_prev, t
+                for _ in range(20):
+                    mid = 0.5 * (lo + hi)
+                    if required(mid)[1] <= 1.0:
+                        hi = mid
+                    else:
+                        lo = mid
+                t = hi
+                a, effort = required(t)
+            return _no_braking(a, v, closing), t, True
+        t_prev = t
         if best is None or effort < best[0]:
             best = (effort, a, t)
     effort, a, t = best
-    return a / effort, t, False
+    return _no_braking(a / effort, v, closing), t, False
+
+
+def _no_braking(a, v, closing):
+    """While closing on the ball, drop any part of `a` that opposes the
+    direction of travel (steering sideways is still allowed)."""
+    if not closing:
+        return a
+    vhat = v / np.linalg.norm(v)
+    along = float(np.dot(a, vhat))
+    return a - along * vhat if along < 0.0 else a

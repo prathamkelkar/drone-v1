@@ -8,7 +8,7 @@ Usage: intercept_check.py [--object NAME] [--duration S] [--save FILE.png]
 Start it before spawning the object. It records the true positions of the
 drone (x500_depth_0) and the object from /world/<world>/dynamic_pose/info
 until --duration seconds pass or Ctrl-C, then prints the closest approach
-and plots distance over time.
+and plots 3D distance, vertical separation, and the x-y top view.
 
 "Hit" means the bodies touched: centre distance below HIT_DISTANCE, the
 drone's reach from its centre (0.174 m * sqrt(2) arm + ~0.13 m propeller
@@ -69,9 +69,12 @@ t = np.array([d[0] for d in data])
 drone = np.array([d[1] for d in data])
 obj = np.array([d[2] for d in data])
 dist = np.linalg.norm(drone - obj, axis=1)
+horizontal_gap = np.linalg.norm(drone[:, :2] - obj[:, :2], axis=1)
+vertical_gap = np.abs(drone[:, 2] - obj[:, 2])
 i = int(np.argmin(dist))
 t0 = t[0]
 print(f'closest approach: {dist[i]:.2f} m at t = {t[i] - t0:.2f} s after the object appeared')
+print(f'  separation: {horizontal_gap[i]:.2f} m horizontal, {vertical_gap[i]:.2f} m vertical')
 print(f'  drone  at ({drone[i][0]:.2f}, {drone[i][1]:.2f}, {drone[i][2]:.2f})')
 print(f'  object at ({obj[i][0]:.2f}, {obj[i][1]:.2f}, {obj[i][2]:.2f})   (Gazebo frame: x east, y north, z up)')
 print('HIT' if dist[i] < HIT_DISTANCE else 'MISS',
@@ -79,7 +82,8 @@ print('HIT' if dist[i] < HIT_DISTANCE else 'MISS',
 
 import matplotlib.pyplot as plt  # noqa: E402  (only needed once there's data)
 
-fig, axes = plt.subplots(2, 1, figsize=(9, 7))
+elapsed = t - t0
+fig, axes = plt.subplots(3, 1, figsize=(10, 10))
 axes[0].plot(t - t0, dist)
 axes[0].axhline(HIT_DISTANCE, color='r', ls='--', label=f'hit threshold {HIT_DISTANCE} m')
 axes[0].axvline(t[i] - t0, color='k', ls=':', label=f'closest {dist[i]:.2f} m')
@@ -87,16 +91,30 @@ axes[0].set_xlabel('sim time since object appeared [s]')
 axes[0].set_ylabel('drone-object distance [m]')
 axes[0].legend()
 axes[0].grid(alpha=0.3)
-axes[1].plot(drone[:, 0], drone[:, 1], label='drone')
-axes[1].plot(obj[:, 0], obj[:, 1], label='object')
-axes[1].plot(*drone[i][:2], 'ko')
-axes[1].plot(*obj[i][:2], 'ko')
-axes[1].set_xlabel('x east [m]')
-axes[1].set_ylabel('y north [m]')
-axes[1].set_aspect('equal', adjustable='datalim')
+
+# Gazebo uses z-up. Plot both true heights and their absolute separation so
+# a small x-y gap cannot hide a vertical miss.
+axes[1].plot(elapsed, drone[:, 2], label='drone height')
+axes[1].plot(elapsed, obj[:, 2], label='object height')
+axes[1].plot(elapsed, vertical_gap, '--', label='vertical gap |Δz|')
+axes[1].axvline(elapsed[i], color='k', ls=':',
+                label=f'closest: vertical gap {vertical_gap[i]:.2f} m')
+axes[1].set_xlabel('sim time since object appeared [s]')
+axes[1].set_ylabel('z / vertical distance [m]')
 axes[1].legend()
 axes[1].grid(alpha=0.3)
-axes[1].set_title('top view (black dots: positions at closest approach)')
+axes[1].set_title('vertical comparison (Gazebo z-up)')
+
+axes[2].plot(drone[:, 0], drone[:, 1], label='drone')
+axes[2].plot(obj[:, 0], obj[:, 1], label='object')
+axes[2].plot(*drone[i][:2], 'ko')
+axes[2].plot(*obj[i][:2], 'ko')
+axes[2].set_xlabel('x east [m]')
+axes[2].set_ylabel('y north [m]')
+axes[2].set_aspect('equal', adjustable='datalim')
+axes[2].legend()
+axes[2].grid(alpha=0.3)
+axes[2].set_title('top view (black dots: positions at closest 3D approach)')
 fig.tight_layout()
 if args.save:
     fig.savefig(args.save, dpi=130)

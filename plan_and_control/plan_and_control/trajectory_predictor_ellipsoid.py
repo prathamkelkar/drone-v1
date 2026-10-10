@@ -34,6 +34,7 @@ from scipy.optimize import brentq
 
 import rclpy
 from rclpy.node import Node
+from rclpy.duration import Duration
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
@@ -46,7 +47,7 @@ class InterceptSolver:
     def __init__(self, g=9.81,
                  a_max_h=5.0, a_max_v=2.0,
                  v_max_h=20.0, v_max_v=3.0,
-                 h_target=0.0, max_time=5.0):
+                 h_target=0.0, max_time=5.0, reaction_delay=0.0):
         self.g = g
         # Search horizon (s) when the object never lands (g == 0, i.e. a
         # constant-velocity object); with gravity the horizon is t_ground.
@@ -56,6 +57,7 @@ class InterceptSolver:
         self.v_max_h = v_max_h   # max horizontal cruise speed, m/s
         self.v_max_v = v_max_v   # max vertical cruise speed, m/s
         self.h_target = h_target  # intercept height (0 = ground)
+        self.reaction_delay = reaction_delay  # time before commanded acceleration takes effect
 
     def p_object(self, t, p0, v0):
         """Ballistic position at time t, given initial position/velocity."""
@@ -119,16 +121,20 @@ class InterceptSolver:
 
     def flight_time(self, distance, a_eff, v_eff):
         """Time for the drone to cover `distance` starting from rest,
-        accelerating at a_eff up to v_eff, then cruising."""
+        after reaction_delay, accelerating at a_eff up to v_eff, then
+        cruising."""
+        if distance <= 1e-9:
+            return 0.0
         d_accel = v_eff**2 / (2 * a_eff)
 
         if distance >= d_accel:
             t_accel = v_eff / a_eff
             d_remaining = distance - d_accel
             t_cruise = d_remaining / v_eff
-            return t_accel + t_cruise
+            travel_time = t_accel + t_cruise
         else:
-            return np.sqrt(2 * distance / a_eff)
+            travel_time = np.sqrt(2 * distance / a_eff)
+        return self.reaction_delay + travel_time
 
     def g_func(self, t, p0, v0, drone_start):
         """Root-find target: t_drone_needed(t) - t. Zero at the
@@ -221,6 +227,9 @@ class TrajectoryPredictorNode(Node):
         self.declare_parameter('v_max_h', 20.0)
         self.declare_parameter('v_max_v', 3.0)
         self.declare_parameter('h_target', 0.0)
+        # Time for PX4/the vehicle to begin producing the planned
+        # acceleration. This must match the interceptor's tilt_delay.
+        self.declare_parameter('tilt_delay', 0.1)
         self.declare_parameter('intercept_mode', 'ellipsoid')  # 'ellipsoid' or 'independent_axes'
         # How the object moves: 'ballistic' (gravity only, thrown/dropped),
         # 'constant_velocity' (no gravity, e.g. a ball gliding sideways) or
@@ -233,6 +242,7 @@ class TrajectoryPredictorNode(Node):
             v_max_h=self.get_parameter('v_max_h').value,
             v_max_v=self.get_parameter('v_max_v').value,
             h_target=self.get_parameter('h_target').value,
+            reaction_delay=self.get_parameter('tilt_delay').value,
         )
 
         # Same drone limits, but g=0 so the object keeps its velocity.
@@ -243,6 +253,7 @@ class TrajectoryPredictorNode(Node):
             v_max_h=self.get_parameter('v_max_h').value,
             v_max_v=self.get_parameter('v_max_v').value,
             h_target=self.get_parameter('h_target').value,
+            reaction_delay=self.get_parameter('tilt_delay').value,
         )
 
         self.drone_position = None
@@ -282,7 +293,8 @@ class TrajectoryPredictorNode(Node):
             self.get_logger().warn('No drone position yet — skipping solve')
             return
 
-        # Object state is in the NED 'world' frame; flip z to z-up.
+        # Object state is in the NED 'world' frame at the image capture time;
+        # flip z to z-up for the solver.
         p0 = np.array([
             msg.pose.pose.position.x,
             msg.pose.pose.position.y,
@@ -296,6 +308,21 @@ class TrajectoryPredictorNode(Node):
 
         model = self.get_parameter('object_model').value
         solver = self.solver_cv if model == 'constant_velocity' else self.solver
+
+        # The Kalman state retains the image capture timestamp. Perception and
+        # transport add significant latency, while drone odometry is current.
+        # Propagate the object to the current sim time before solving so both
+        # states share the same time origin and now + t_star is the real
+        # predicted arrival time.
+        now = self.get_clock().now()
+        state_time = rclpy.time.Time.from_msg(msg.header.stamp)
+        state_age = max((now - state_time).nanoseconds * 1e-9, 0.0)
+        if model == 'ballistic':
+            p0 = solver.p_object(state_age, p0, v0)
+            v0 = v0.copy()
+            v0[2] -= solver.g * state_age
+        elif model == 'constant_velocity':
+            p0 = p0 + v0 * state_age
 
         if model == 'static':
             # Stationary object: fly straight to where it is.
@@ -331,6 +358,9 @@ class TrajectoryPredictorNode(Node):
 
         out = PoseStamped()
         out.header = msg.header
+        intercept_time = now + Duration(seconds=float(t_star))
+        out.header.stamp = intercept_time.to_msg()
+        out.header.frame_id = 'world'
         out.pose.position.x = float(p_intercept[0])
         out.pose.position.y = float(p_intercept[1])
         out.pose.position.z = float(-p_intercept[2])  # back to NED (z down)

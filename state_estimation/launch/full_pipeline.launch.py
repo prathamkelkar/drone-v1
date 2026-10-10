@@ -6,10 +6,9 @@ import os
 
 def generate_launch_description():
 
-    # How the test object moves. One switch for the three nodes that must
-    # agree on it (Kalman filter gravity, predictor object_model,
-    # interceptor object_gravity) - a mismatch makes the whole pipeline chase
-    # a ball it thinks is falling.
+    # How the test object moves. One switch keeps the Kalman filter gravity
+    # and predictor object model consistent. The interceptor now consumes the
+    # predictor's feasible point rather than modelling the ball separately.
     #   motion:=linear     glide_ball.py / glide_bottle.py (straight line, no gravity)
     #   motion:=ballistic  launch_ball.py (thrown / dropped, gravity 9.81)
     motion_arg = DeclareLaunchArgument(
@@ -170,18 +169,19 @@ def generate_launch_description():
     trajectory_predictor = Node(
         package='plan_and_control',
         executable='trajectory_predictor_ellipsoid',
-        # h_target: lowest height (above the drone's start point, z-up) at
-        # which the ball may be intercepted. 1 m below the 4.0 m hover
-        # (takeoff_height) so the drone can also catch a falling ball that
-        # has already dropped below it.
+        # h_target: lowest height above the ground (solver uses z-up) at
+        # which the ball may be intercepted. The previous 3 m limit left too
+        # little flight time for the drone to reach a parabolic target, so
+        # the predictor never published an intercept point.
         # Drone limits for the intercept solver, at the drone's maximum:
         #   a_max_h 12.6 m/s^2 = g*tan(52 deg tilt); v_max_h 20 = MPC_XY_VEL_MAX
         #   a_max_v 6.3 m/s^2 = full-thrust climb (34.2 N / 2.13 kg - g), the
         #     smaller of climb and descent (~7.9 m/s^2)
         #   v_max_v 4 m/s = MPC_Z_VEL_MAX_DN, the smaller of climb (8) and
         #     descent (4); the solver uses one vertical limit for both.
-        parameters=[{'use_sim_time': True, 'object_model': object_model, 'h_target': 3.0,
-                     'intercept_mode': 'independent_axes',
+        parameters=[{'use_sim_time': True, 'object_model': object_model, 'h_target': 0.3,
+                     'tilt_delay': 0.1,
+                     'intercept_mode': 'ellipsoid',
                      'a_max_h': 12.6, 'v_max_h': 20.0, 'a_max_v': 6.3, 'v_max_v': 4.0}],
         output='screen'
     )
@@ -189,26 +189,27 @@ def generate_launch_description():
     interceptor = Node(
             package='intercept',
             executable='offboard_inercept_node',
-            # chase_mode 'velocity': fly at full speed toward the target and
-            # brake late, instead of PX4's slow position P-controller.
-            # Velocity setpoint + acceleration feedforward at the drone's
-            # limits: speed caps match the PX4 limits above; a_max_* are the
-            # feedforward accelerations (g*tan(52 deg) horizontal, full-thrust
-            # climb, minimum-thrust descent); a_brake is full horizontal
-            # braking, started response_lag seconds early to allow for the
-            # time the drone takes to tilt the other way.
-            # chase_mode 'thrust': our own intercept guidance
-            # (intercept/thrust_control.py) sends an acceleration setpoint to
-            # PX4 at 100 Hz; PX4's own loops turn it into tilt + thrust.
+            # In every chase mode the drone reaches the intercept point at full
+            # speed or still accelerating, and only brakes once it is past it.
+            # Limits: speed caps match the PX4 limits above; a_max_* are the
+            # drone's accelerations (g*tan(52 deg) horizontal, full-thrust
+            # climb, minimum-thrust descent). a_brake / response_lag are only
+            # used to stop after the chase and on the flight home.
+            # chase_mode 'velocity': full-speed velocity setpoint + full
+            # acceleration feedforward toward the predictor's point; the chase
+            # ends once the point is behind the drone (within pass_radius).
+            # chase_mode 'thrust': our own guidance drives toward the latest
+            # /planning/intercept_ellipsoid point with acceleration setpoints
+            # at 100 Hz; PX4's own loops turn them into tilt + thrust.
             # 'velocity' = PX4 velocity loop + feedforward (previous).
+            # Both modes consume /planning/intercept_ellipsoid; neither starts
+            # a separate chase directly from the Kalman-filter ball state.
             parameters=[{'use_sim_time': True, 'chase_mode': 'thrust',
                          'tilt_max_deg': 52.0,
-                         'tilt_delay': 0.1, 'object_gravity': object_gravity,
-                         # chase ends end_margin s after the planned intercept time
-                         'end_margin': 0.15,
+                         'tilt_delay': 0.1,
                          'v_max_h': 20.0, 'v_max_up': 8.0, 'v_max_dn': 4.0,
                          'a_max_h': 12.6, 'a_max_up': 6.3, 'a_max_dn': 7.9,
-                         'a_brake': 12.6, 'response_lag': 0.15, 'arrive_radius': 0.1,
+                         'a_brake': 12.6, 'response_lag': 0.15, 'pass_radius': 1.0,
                          # end of an attempt: stop chasing when the intercept
                          # point is reached, the target disappears for 0.5 s,
                          # after 4 s or 6 m from home; hold 2 s; fly home at
