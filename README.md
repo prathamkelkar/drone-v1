@@ -1,144 +1,119 @@
-# Simple Quadcopter Teleop (PX4 + Gazebo SITL)
+# drone-v1: object intercept drone (ArduPilot SITL + Gazebo + ROS 2)
 
-A keyboard teleop node for controlling a PX4-simulated quadcopter in Gazebo via offboard velocity setpoints, using ROS 2 and `px4_msgs`.
+A quadcopter that detects a thrown or falling object, predicts its trajectory
+and flies to intercept it.
+
+```
+/camera/image_raw -> perception_node (YOLO) -> object_localizer (2D -> 3D via TF)
+  -> object_kalman_filter -> trajectory_predictor_ellipsoid -> offboard_inercept_node
+  -> MAVROS (/mavros/setpoint_raw/local) -> ArduPilot (GUIDED)
+```
+
+Stack: ROS 2 Jazzy, Gazebo Harmonic, ArduPilot SITL (ArduCopter, `iris_cam`
+model with a forward camera), MAVROS. All frames are ROS-standard ENU (world)
+/ FLU (body). TF chain: `world -> map` (identity, static) `-> base_link`
+(`odom_to_tf`, from `/mavros/local_position/odom`) `-> camera_link` (static,
+optical frame).
+
+| Package | Contents |
+|---|---|
+| `perception` | YOLO detector (`perception_node`) |
+| `state_estimation` | `odom_to_tf`, `object_localizer`, `object_kalman_filter`, `rotate_command`, `mavros_setup`, the Gazebo models/world and `full_pipeline.launch.py` |
+| `plan_and_control` | intercept-point solvers |
+| `intercept` | flies the drone in GUIDED mode via MAVROS |
+| `simple_quadcopter_teleop` | keyboard teleop, **still PX4-only** (not ported) |
 
 ## Prerequisites
 
-- Ubuntu 24.04
-- ROS 2 Jazzy
-- Gazebo Sim (Harmonic, `gz sim` v8.x)
-- PX4-Autopilot (built for `gz_x500` simulation target)
-- Python 3.12+
+- Ubuntu 24.04 (WSL2 works), ROS 2 Jazzy, Gazebo Harmonic
+- `ros-jazzy-mavros` (+ `mavros_extras`), `ros-jazzy-ros-gz-bridge`, `ros-jazzy-vision-msgs`, `ros-jazzy-cv-bridge`
+- ArduPilot at `~/ardupilot` with its Python venv at `~/venv-ardupilot`, and
+  [ardupilot_gazebo](https://github.com/ArduPilot/ardupilot_gazebo) built at `~/ardupilot_gazebo`
+- `pip install --user --break-system-packages ultralytics` (keep system numpy < 2 for `cv_bridge`)
 
-## Installation
-
-### 1. Clone PX4-Autopilot (if not already present)
+Gazebo must find the models (in `~/.bashrc`):
 
 ```bash
-cd ~
-git clone https://github.com/PX4/PX4-Autopilot.git --recursive
-cd PX4-Autopilot
-bash ./Tools/setup/ubuntu.sh
+export GZ_SIM_SYSTEM_PLUGIN_PATH=$HOME/ardupilot_gazebo/build:$GZ_SIM_SYSTEM_PLUGIN_PATH
+export GZ_SIM_RESOURCE_PATH=$HOME/ardupilot_gazebo/models:$HOME/ardupilot_gazebo/worlds:$GZ_SIM_RESOURCE_PATH
+export GZ_SIM_RESOURCE_PATH=<repo>/state_estimation/models/ardupilot:$GZ_SIM_RESOURCE_PATH
 ```
 
-### 2. Set the Gazebo resource path
+## Build
 
-PX4's models and worlds must be discoverable by Gazebo. Add this to your `~/.bashrc`:
-
-```bash
-echo 'export GZ_SIM_RESOURCE_PATH=$HOME/PX4-Autopilot/Tools/simulation/gz/models:$HOME/PX4-Autopilot/Tools/simulation/gz/worlds:$GZ_SIM_RESOURCE_PATH' >> ~/.bashrc
-source ~/.bashrc
-```
-
-### 3. Install the Micro XRCE-DDS Agent
-
-This bridges PX4's internal messaging (uORB) to ROS 2 topics (`/fmu/...`). Without it, no PX4 topics will be visible to ROS 2.
+Use **system** Python for colcon and every ROS terminal (never the ArduPilot venv).
 
 ```bash
-git clone https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
-cd Micro-XRCE-DDS-Agent
-mkdir build && cd build
-cmake ..
-make
-sudo make install
-sudo ldconfig /usr/local/lib/
-```
-
-### 4. Install MAVProxy (lightweight ground control station)
-
-PX4 requires an active GCS/MAVLink connection to pass preflight checks and allow arming. MAVProxy satisfies this without needing a full GUI application like QGroundControl.
-
-```bash
-pip install --user MAVProxy --break-system-packages
-```
-
-### 5. Set up your ROS 2 workspace
-
-Clone `px4_msgs` into your workspace (must match your PX4-Autopilot version):
-
-```bash
-cd ~/ros2_ws/src
-git clone https://github.com/PX4/px4_msgs.git
-```
-
-Clone or place this package (`simple_quadcopter_teleop`) into `~/ros2_ws/src` as well.
-
-Build everything:
-
-```bash
-cd ~/ros2_ws
-colcon build --symlink-install
+cd ~/ros2_ws            # src/ contains symlinks to this repo's packages
+source /opt/ros/jazzy/setup.bash
+colcon build
 source install/setup.bash
 ```
 
-### 6. (Optional) GPU offload — for hybrid graphics laptops (e.g. Intel + Nvidia)
+(Building at the repo root with `colcon build` also works; `build/`,
+`install/`, `log/` are git-ignored.)
 
-If your Gazebo GUI runs sluggishly on integrated graphics, force it onto your discrete GPU:
+## One-time SITL parameters
+
+In the MAVProxy prompt of a first SITL run:
+
+```
+param set FRAME_CLASS 1
+param set FRAME_TYPE 1
+reboot
+```
+
+## Running
+
+1. **T1, Gazebo.** Started by the launch file in step 3; no separate terminal needed.
+   (To run it by hand: `gz sim -v4 -r state_estimation/models/ardupilot/worlds/drone_world.sdf`.)
+2. **T2, ArduPilot SITL** (needs the venv and an interactive MAVProxy prompt,
+   so it is never started by the launch file):
+   ```bash
+   scripts/start_sitl.sh
+   # = source ~/venv-ardupilot/bin/activate && cd ~/ardupilot/ArduCopter && \
+   #   sim_vehicle.py -v ArduCopter -f gazebo-iris --model JSON --console --out 127.0.0.1:14550
+   ```
+3. **T3, the pipeline:**
+   ```bash
+   source ~/ros2_ws/install/setup.bash
+   ros2 launch state_estimation full_pipeline.launch.py perception_device:=cpu
+   ```
+   Launch arguments: `world` (SDF path), `fcu_url` (default `udp://:14550@`;
+   real drone `/dev/ttyAMA0:921600`), `perception_device` (`cuda:0` or `cpu`).
+   Stage delays are the `T_*` constants at the top of the launch file (the
+   sim runs at ~36% real time, so they are generous).
+4. **Flight.** The interceptor (started at t≈35 s) sets GUIDED, arms, takes off to
+   4 m and hovers by itself. If you run without it, use the MAVProxy prompt
+   (`STABILIZE>` / `GUIDED>`):
+   ```
+   mode guided
+   arm throttle
+   takeoff 4
+   ```
+
+`mavros_setup` (started by the launch) turns MAVROS's own TF off and requests
+ATTITUDE / ATTITUDE_QUATERNION / LOCAL_POSITION_NED at 30 Hz; without it
+odometry arrives at ~2.7 Hz. It retries until MAVROS and the FCU are up, so
+SITL may be started before or after the launch.
+
+## Quick checks
 
 ```bash
-echo 'export __GLX_VENDOR_LIBRARY_NAME=nvidia' >> ~/.bashrc
-echo 'export __NV_PRIME_RENDER_OFFLOAD=1' >> ~/.bashrc
-source ~/.bashrc
+ros2 topic echo /mavros/state --once                 # connected: true, mode, armed
+ros2 param get /mavros/local_position tf.send        # false
+ros2 run tf2_ros tf2_echo world camera_link          # z ~ 4.2 m in hover
+ros2 run tf2_tools view_frames                       # one tree, one map->base_link publisher
+ros2 topic hz /mavros/local_position/odom            # ~30 Hz (sim time)
 ```
-
-## Running the Simulation
-
-Open four terminals.
-
-**Terminal 1 — Micro XRCE-DDS Agent:**
-```bash
-MicroXRCEAgent udp4 -p 8888
-```
-
-**Terminal 2 — MAVProxy (fake GCS):**
-```bash
-mavproxy.py --master=udp:127.0.0.1:14550
-```
-
-**Terminal 3 — PX4 + Gazebo:**
-```bash
-cd ~/PX4-Autopilot
-make px4_sitl gz_x500
-```
-Wait for the `pxh>` prompt and the Gazebo window with the drone visible. Click into the Gazebo window and press **Escape** to unlock free camera control (PX4 starts the camera in follow-mode by default).
-
-Verify PX4 is ready to arm:
-```
-pxh> commander check
-```
-This should show no "No connection to the GCS" failure (MAVProxy resolves this).
-
-**Terminal 4 — Teleop node:**
-```bash
-cd ~/ros2_ws
-source install/setup.bash
-ros2 run simple_quadcopter_teleop teleop_node
-```
-
-## Controls
-
-Click into Terminal 4 so it has keyboard focus, then:
-
-| Key | Action |
-|-----|--------|
-| `w` / `s` | Forward / backward |
-| `a` / `d` | Left / right |
-| `i` / `k` | Up / down |
-| `j` / `l` | Yaw left / right |
-| `space` | Stop (zero velocity) |
-| `r` | Arm + switch to offboard mode |
-| `q` | Quit |
-
-**Note:** Wait a couple of seconds after launching the node before pressing `r` — PX4 requires a steady stream of setpoints flowing before it will accept an offboard mode switch.
 
 ## Troubleshooting
 
 | Symptom | Likely cause |
 |---|---|
-| `Publisher count: 0` on `/fmu/...` topics | PX4/Gazebo not running, or `MicroXRCEAgent` not started |
-| `Unknown topic` on a `/fmu/...` topic | Topic name version mismatch (e.g. `_v1` vs `_v4`) — check `ros2 topic list \| grep fmu` for the actual name |
-| `The message type '...' is invalid` | `px4_msgs` not built/sourced, or version mismatch with your PX4-Autopilot checkout |
-| Gazebo world loads empty | `GZ_SIM_RESOURCE_PATH` not set correctly |
-| `make px4_sitl` hangs on "Waiting for Gazebo world..." | Same resource path issue, or stale `px4`/`gz` processes — try `pkill -9 -f px4 && pkill -9 -f gz` |
-| Can't pan/zoom/rotate camera in Gazebo | Camera starts in follow-mode — click into the window and press **Escape** |
-| `commander arm` denied: "Resolve system health failures first" | Run `commander check` in the `pxh>` console to see the specific failing check |
+| Gazebo world loads without the drone | `GZ_SIM_RESOURCE_PATH` misses `state_estimation/models/ardupilot` or `ardupilot_gazebo/models` |
+| SITL stuck at "waiting for JSON" | Gazebo not running / `GZ_SIM_SYSTEM_PLUGIN_PATH` misses `ardupilot_gazebo/build` |
+| `/mavros/state` `connected: false` | SITL not started with `--out 127.0.0.1:14550` |
+| Arming rejected repeatedly | EKF still initialising (wait), or pre-arm failure: see the MAVProxy console |
+| Odometry ~2.7 Hz | `mavros_setup` failed (check its log) |
+| `cv_bridge` / numpy errors | numpy 2 installed in `~/.local`; ROS needs numpy 1.x |

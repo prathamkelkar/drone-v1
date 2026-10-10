@@ -24,11 +24,17 @@ DEFAULT_WORLD = os.path.expanduser(
 # SITL over UDP. On the real drone: /dev/ttyAMA0:921600
 DEFAULT_FCU_URL = 'udp://:14550@'
 
-# Launch-time delays (wall seconds after `ros2 launch`).
+# Launch-time delays (wall seconds after `ros2 launch`), in dependency order.
 T_BRIDGES_MAVROS = 10.0   # ros_gz bridges + MAVROS
 T_SETUP_TF = 20.0         # mavros_setup helper, static TFs, odom_to_tf
 T_PERCEPTION = 25.0       # perception, localizer, Kalman filter
-T_PREDICTION = 30.0       # rotate_command
+T_PREDICTION = 30.0       # trajectory predictor, rotate_command
+T_INTERCEPT = 35.0        # interceptor (arms and takes off on its own)
+
+# Hover/takeoff height and intercept height (m above home, ENU z). Kept equal
+# so the drone catches the ball at hover height instead of having to descend
+# to the ground in the ball's flight time.
+INTERCEPT_HEIGHT = 4.0
 
 
 def generate_launch_description():
@@ -140,8 +146,8 @@ def generate_launch_description():
     kalman_filter = Node(
         package='state_estimation',
         executable='object_kalman_filter',
-        # gravity 0.0 for the constant-velocity test; thrown objects need gravity
-        # (sign handled in Phase 4: falling = negative vz in ENU)
+        # gravity: positive magnitude, applied along -z (ENU). 0.0 for the
+        # constant-velocity test; 9.81 for thrown/dropped objects.
         parameters=[{'use_sim_time': True, 'gravity': 0.0}],
         output='screen'
     )
@@ -153,8 +159,26 @@ def generate_launch_description():
         output='screen'
     )
 
-    # Phase 4/5 (still on px4_msgs, re-enable once ported):
-    # trajectory_predictor_ellipsoid, offboard_inercept_node
+    trajectory_predictor = Node(
+        package='plan_and_control',
+        executable='trajectory_predictor_ellipsoid',
+        # h_target: height (above the drone's start point, z-up) at which the
+        # ball is intercepted. Keep it equal to the interceptor's
+        # takeoff_height so the drone catches the ball at hover height
+        # instead of having to descend to the ground in the ball's flight time.
+        parameters=[{'use_sim_time': True, 'object_model': 'constant_velocity',
+                     'h_target': INTERCEPT_HEIGHT, 'intercept_mode': 'independent_axes'}],
+        output='screen'
+    )
+
+    # Sets GUIDED, arms, takes off to takeoff_height, hovers, then chases
+    # /planning/intercept_ellipsoid. (Executable name typo is intentional.)
+    interceptor = Node(
+        package='intercept',
+        executable='offboard_inercept_node',
+        parameters=[{'use_sim_time': True, 'takeoff_height': INTERCEPT_HEIGHT}],
+        output='screen'
+    )
 
     return LaunchDescription([
         world_arg,
@@ -178,6 +202,11 @@ def generate_launch_description():
         ]),
 
         TimerAction(period=T_PREDICTION, actions=[
+            trajectory_predictor,
             rotate_command,
+        ]),
+
+        TimerAction(period=T_INTERCEPT, actions=[
+            interceptor,
         ]),
     ])

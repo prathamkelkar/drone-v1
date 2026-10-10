@@ -22,6 +22,8 @@
   <exec_depend>ros_gz_bridge</exec_depend>
   <exec_depend>mavros</exec_depend>
   <exec_depend>perception</exec_depend>
+  <exec_depend>plan_and_control</exec_depend>
+  <exec_depend>intercept</exec_depend>
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
