@@ -100,9 +100,9 @@ and below `min_safe_height` the acceleration is never downward.
 | `odom_topic` | `/mavros/local_position/odom` | |
 | `velocity_topic` | `/mavros/local_position/velocity_local` | |
 | `chase_mode` | `thrust` | `thrust` or `velocity` |
-| `v_max_h` / `v_max_up` / `v_max_dn` | `12` / `6` / `4` | m/s, velocity mode |
-| `a_max_h` / `a_max_up` / `a_max_dn` | `9.8` / `4.5` / `5.0` | m/s², guidance and feedforward limits |
-| `a_brake` | `8.0` | m/s², stopping after the chase |
+| `v_max_h` / `v_max_up` / `v_max_dn` | `20` / `8` / `4` | m/s, velocity mode |
+| `a_max_h` / `a_max_up` / `a_max_dn` | `9.80665` / `5` / `5` | m/s², guidance and feedforward limits |
+| `a_brake` | `9.80665` | m/s², stopping after the chase |
 | `response_lag` | `0.15` | s, braking-curve lead (flight home) |
 | `tilt_delay` | `0.25` | s before a commanded acceleration takes effect; = predictor's `tilt_delay` |
 | `terminal_time` / `end_margin` | `0.15` / `0.15` | s, final push through the point |

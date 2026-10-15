@@ -1,0 +1,31 @@
+# Loaded AFTER mavros's own apm_pluginlists.yaml and apm_config.yaml (see
+# full_pipeline.launch.py), so anything here overrides the stock ArduPilot
+# config. Same /**/ wildcard style as apm_config.yaml.
+
+# odom_to_tf is the only publisher of map -> base_link. apm_config.yaml
+# already defaults tf.send to false; pin it here so an upstream change
+# cannot give us two TF publishers. mavros_setup re-applies it at runtime.
+/**:
+  ros__parameters:
+    # This pipeline flies directly in GUIDED mode and does not use uploaded
+    # AUTO missions, ROS-managed fences, or rally-point synchronization.
+    # Keep the stock ArduPilot denylist and exclude those three mission
+    # protocol clients so they cannot consume bandwidth by polling SITL.
+    plugin_denylist:
+      - actuator_control
+      - ftp
+      - hil
+      - altitude
+      - debug_value
+      - image_pub
+      - px4flow
+      - vibration
+      - vision_speed_estimate
+      - wheel_odometry
+      - waypoint
+      - geofence
+      - rallypoint
+
+/**/local_position:
+  ros__parameters:
+    tf.send: false

@@ -20,9 +20,8 @@ Model:
 - Object: known ballistic trajectory (gravity-only, no drag)
 - Drone: straight-line flight toward the intercept point, with
   direction-dependent effective acceleration AND velocity limits,
-  each derived from separate horizontal/vertical capabilities via an
-  ellipsoid projection (a real quadrotor's vertical and horizontal max
-  acceleration AND max cruise speed both generally differ).
+  each derived from separate horizontal, climb and descent capabilities
+  via an ellipsoid projection.
 - Solve: brentq root-find on g(t) = t_drone_needed(t) - t, bracketed by
   [0, t_ground], where t_ground is the analytic time the object reaches
   the intercept height.
@@ -49,17 +48,19 @@ class InterceptSolver:
     """Pure math — no ROS dependencies, easy to unit test standalone."""
 
     def __init__(self, g=9.81,
-                 a_max_h=5.0, a_max_v=2.0,
-                 v_max_h=20.0, v_max_v=3.0,
+                 a_max_h=9.80665, a_max_up=5.0, a_max_dn=5.0,
+                 v_max_h=20.0, v_max_up=8.0, v_max_dn=4.0,
                  h_target=0.0, max_time=5.0, reaction_delay=0.0):
         self.g = g
         # Search horizon (s) when the object never lands (g == 0, i.e. a
         # constant-velocity object); with gravity the horizon is t_ground.
         self.max_time = max_time
         self.a_max_h = a_max_h   # max horizontal acceleration, m/s^2
-        self.a_max_v = a_max_v   # max vertical acceleration, m/s^2
+        self.a_max_up = a_max_up  # max upward acceleration, m/s^2 (ENU +z)
+        self.a_max_dn = a_max_dn  # max downward acceleration magnitude, m/s^2
         self.v_max_h = v_max_h   # max horizontal cruise speed, m/s
-        self.v_max_v = v_max_v   # max vertical cruise speed, m/s
+        self.v_max_up = v_max_up  # max climb speed, m/s (ENU +z)
+        self.v_max_dn = v_max_dn  # max descent speed magnitude, m/s
         self.h_target = h_target  # intercept height (0 = ground)
         self.reaction_delay = reaction_delay  # time before commanded acceleration takes effect
 
@@ -113,15 +114,16 @@ class InterceptSolver:
         return 1.0 / np.sqrt(denom)
 
     def effective_accel(self, direction_unit_vector):
-        """Direction-projected acceleration limit. Provably never
-        exceeds a_max_h or a_max_v on any axis component."""
-        return self._ellipsoid_project(direction_unit_vector, self.a_max_h, self.a_max_v)
+        """Return the acceleration limit projected along the travel direction."""
+        vertical_limit = self.a_max_up if direction_unit_vector[2] >= 0.0 else self.a_max_dn
+        return self._ellipsoid_project(
+            direction_unit_vector, self.a_max_h, vertical_limit)
 
     def effective_velocity(self, direction_unit_vector):
-        """Direction-projected cruise speed limit. Same ellipsoid
-        projection as effective_accel but for velocity — provably
-        never exceeds v_max_h or v_max_v on any axis component."""
-        return self._ellipsoid_project(direction_unit_vector, self.v_max_h, self.v_max_v)
+        """Return the cruise-speed limit projected along the travel direction."""
+        vertical_limit = self.v_max_up if direction_unit_vector[2] >= 0.0 else self.v_max_dn
+        return self._ellipsoid_project(
+            direction_unit_vector, self.v_max_h, vertical_limit)
 
     def flight_time(self, distance, a_eff, v_eff):
         """Time for the drone to cover `distance` starting from rest,
@@ -196,8 +198,12 @@ class InterceptSolver:
         times = []
         for i in range(3):
             d = abs(delta[i])
-            a_axis = self.a_max_v if i == 2 else self.a_max_h
-            v_axis = self.v_max_v if i == 2 else self.v_max_h
+            if i == 2:
+                a_axis = self.a_max_up if delta[i] >= 0.0 else self.a_max_dn
+                v_axis = self.v_max_up if delta[i] >= 0.0 else self.v_max_dn
+            else:
+                a_axis = self.a_max_h
+                v_axis = self.v_max_h
             times.append(self.flight_time(d, a_axis, v_axis))
         return max(times)
 
@@ -225,10 +231,12 @@ class TrajectoryPredictorNode(Node):
         # Defaults for running the node on its own; full_pipeline.launch.py
         # sets them from the ArduPilot limits in scripts/intercept.parm
         # (ATC_ANGLE_MAX, WP_ACC_Z, WP_SPD, WP_SPD_UP/DN).
-        self.declare_parameter('a_max_h', 5.0)
-        self.declare_parameter('a_max_v', 5.0)
+        self.declare_parameter('a_max_h', 9.80665)
+        self.declare_parameter('a_max_up', 5.0)
+        self.declare_parameter('a_max_dn', 5.0)
         self.declare_parameter('v_max_h', 20.0)
-        self.declare_parameter('v_max_v', 3.0)
+        self.declare_parameter('v_max_up', 8.0)
+        self.declare_parameter('v_max_dn', 4.0)
         self.declare_parameter('h_target', 0.0)
         # Time for ArduPilot/the vehicle to begin producing the planned
         # acceleration. This must match the interceptor's tilt_delay.
@@ -242,9 +250,11 @@ class TrajectoryPredictorNode(Node):
 
         self.solver = InterceptSolver(
             a_max_h=self.get_parameter('a_max_h').value,
-            a_max_v=self.get_parameter('a_max_v').value,
+            a_max_up=self.get_parameter('a_max_up').value,
+            a_max_dn=self.get_parameter('a_max_dn').value,
             v_max_h=self.get_parameter('v_max_h').value,
-            v_max_v=self.get_parameter('v_max_v').value,
+            v_max_up=self.get_parameter('v_max_up').value,
+            v_max_dn=self.get_parameter('v_max_dn').value,
             h_target=self.get_parameter('h_target').value,
             reaction_delay=self.get_parameter('tilt_delay').value,
         )
@@ -253,9 +263,11 @@ class TrajectoryPredictorNode(Node):
         self.solver_cv = InterceptSolver(
             g=0.0,
             a_max_h=self.get_parameter('a_max_h').value,
-            a_max_v=self.get_parameter('a_max_v').value,
+            a_max_up=self.get_parameter('a_max_up').value,
+            a_max_dn=self.get_parameter('a_max_dn').value,
             v_max_h=self.get_parameter('v_max_h').value,
-            v_max_v=self.get_parameter('v_max_v').value,
+            v_max_up=self.get_parameter('v_max_up').value,
+            v_max_dn=self.get_parameter('v_max_dn').value,
             h_target=self.get_parameter('h_target').value,
             reaction_delay=self.get_parameter('tilt_delay').value,
         )

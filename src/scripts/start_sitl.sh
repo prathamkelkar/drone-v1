@@ -8,5 +8,7 @@ set -e
 PARM="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/intercept.parm"
 source ~/venv-ardupilot/bin/activate
 cd ~/ardupilot/ArduCopter
-exec sim_vehicle.py -v ArduCopter -f gazebo-iris --model JSON --console \
-    --out 127.0.0.1:14550 --add-param-file="$PARM" "$@"
+exec "$HOME/ardupilot/Tools/autotest/sim_vehicle.py" \
+    -v ArduCopter -f gazebo-iris --model JSON --console \
+    --mavproxy-args="--streamrate=-1" \
+    --add-param-file="$PARM" "$@"

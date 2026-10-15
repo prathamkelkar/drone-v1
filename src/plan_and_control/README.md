@@ -8,8 +8,8 @@ intercept self-corrects as the estimate refines and the drone moves.
 
 All inputs and outputs are ENU (z up). The object state is in `world`, the
 drone odometry in `map` (identity transform between them). `h_target` is the
-intercept height above home (MAVROS's local origin), so it should equal the
-interceptor's `takeoff_height`.
+lowest permitted intercept height above home (MAVROS's local origin), so it
+should equal the interceptor's `min_target_height`.
 
 ## `trajectory_predictor_ellipsoid`
 
@@ -22,7 +22,12 @@ single shared-thrust-vector motion.
   - `/estimation/object_state` (`nav_msgs/Odometry`): object position/velocity
   - `/mavros/local_position/odom` (`nav_msgs/Odometry`, best-effort; parameter `drone_odom_topic`): drone position (only position is used)
 - Publishes `/planning/intercept_ellipsoid` (`geometry_msgs/PoseStamped`, ENU, frame `world`). The header stamp is the **predicted arrival time** (now + t*), which the interceptor's thrust mode aims for. The object state is first propagated from its image capture stamp to now, so perception latency doesn't make the plan late.
-- Parameters: `a_max_h`, `a_max_v`, `v_max_h`, `v_max_v`, `h_target`, `tilt_delay` (added to the drone's flight time; = interceptor's `tilt_delay`), `object_model` (`ballistic`, `constant_velocity` or `static`), `intercept_mode` (`ellipsoid` or `independent_axes`: which solver's result is published; both are computed for comparison logging)
+- Parameters: `a_max_h`, `a_max_up`, `a_max_dn`, `v_max_h`, `v_max_up`,
+  `v_max_dn`, `h_target`, `tilt_delay` (added to the drone's flight time; =
+  interceptor's `tilt_delay`), `object_model` (`ballistic`,
+  `constant_velocity` or `static`), `intercept_mode` (`ellipsoid` or
+  `independent_axes`: which solver's result is published; both are computed
+  for comparison logging)
 - Solves the ballistic quadratic analytically for the time the object reaches `h_target`, then finds the **earliest** self-consistent intercept time: the window is sampled first and `scipy.optimize.brentq` refines the first sign change (bracketing only the two ends missed intercepts feasible early but not late).
 - The core math (`InterceptSolver`) has no ROS dependency.
 
@@ -39,9 +44,10 @@ launch file.
 ## Known issues
 
 - The launch file sets the limits from the ArduPilot parameters in
-  `scripts/intercept.parm`; they are derived from the parameter docs, not yet
-  verified by step-response tests in Gazebo. The independent-axes node still
-  has placeholder defaults.
+  `scripts/intercept.parm`: 20 m/s horizontal, 8 m/s climb, 4 m/s descent;
+  9.80665 m/s² horizontal in acceleration-only mode and 5 m/s² vertically.
+  They are controller limits and still need step-response validation before
+  hardware use. The independent-axes node still has placeholder defaults.
 
 ## Dependencies
 

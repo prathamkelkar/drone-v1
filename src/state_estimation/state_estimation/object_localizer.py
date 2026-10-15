@@ -35,11 +35,6 @@ class Object_Localizer(Node):
 
         self.pose_pub = self.create_publisher(PoseStamped, 'estimation/pose_object_raw', qos)
 
-        # True: transform each detection using the drone's pose at the moment
-        # the image was captured. False: use the latest pose (old behaviour);
-        # kept so the two can be compared.
-        self.declare_parameter('use_image_stamp', True)
-
         # buffer stores and manages all transforms over time
         self.tf_buffer = tf2_ros.Buffer()
         # listener receives those transformations from the network and feeds them into the buffer
@@ -63,24 +58,15 @@ class Object_Localizer(Node):
             self.get_logger().warn('No camera info received yet -> skipping detection')
             return
 
-        # The detection carries the image's capture time (perception copies
-        # the image header). Detections arrive ~0.2-0.3 s after capture, so
-        # transforming with the *latest* drone pose would inject an error of
-        # about drone_velocity * latency (plus a tilt error). Ask tf for the
-        # pose at capture time instead; it interpolates between the two
-        # nearest recorded transforms.
-        query_time = rclpy.time.Time()  # 0 = latest available
-        if self.get_parameter('use_image_stamp').value:
-            capture_time = rclpy.time.Time.from_msg(msg.header.stamp)
-            if self.tf_buffer.can_transform('world', self.camera_frame, capture_time):
-                query_time = capture_time
-            else:
-                # capture time not (yet / any longer) covered by the tf buffer
-                self.get_logger().warn(
-                    'No tf at image capture time, using latest pose instead',
-                    throttle_duration_sec=2.0)
-
+        # Perception copies the image capture timestamp into the detection.
+        # Always use the drone pose at that exact instant. Substituting the
+        # latest pose would mix two times and create an error proportional to
+        # drone velocity, which is especially harmful during an intercept.
+        query_time = rclpy.time.Time.from_msg(msg.header.stamp)
         if not self.tf_buffer.can_transform('world', self.camera_frame, query_time):
+            self.get_logger().warn(
+                'No TF at image capture time; dropping detection',
+                throttle_duration_sec=2.0)
             return
 
         # center of the coordinates

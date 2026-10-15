@@ -18,7 +18,8 @@ Publishes `map -> base_link` from MAVROS odometry (MAVROS's own TF is off).
 One-shot helper started by the launch file. Waits for MAVROS and the FCU,
 sets `/mavros/local_position` `tf.send` to `false`, and requests MAVLink
 message intervals 30/31/32 (ATTITUDE, ATTITUDE_QUATERNION, LOCAL_POSITION_NED)
-at 30 Hz via `/mavros/set_message_interval`, retrying until each succeeds,
+at the configured rate (100 Hz in `full_pipeline.launch.py`) via
+`/mavros/set_message_interval`, retrying until each succeeds,
 then exits. Parameters: `message_ids`, `message_rate`, `disable_mavros_tf`,
 `retry_period`, `timeout` (wall seconds).
 
@@ -62,12 +63,16 @@ staged with delays (constants `T_*` at the top of the file). ArduPilot SITL is
 
 Arguments: `world`, `fcu_url` (default `udp://:14550@`), `perception` (`hsv`/`yolo`), `motion` (`linear`/`ballistic`: Kalman filter gravity 0/9.81 and the predictor's object model), `perception_device` (`cuda:0`/`cpu`), `target_class` (`ball`/`carton`/`plastic_bottle`), `yolo_model`.
 
-The drone limits shared by the predictor and the interceptor (`A_MAX_*`, `V_MAX_*`, `TILT_DELAY`) are constants at the top of the file and must stay within the ArduPilot limits in `scripts/intercept.parm`.
+The drone limits shared by the predictor and the interceptor (`A_MAX_*`,
+`V_MAX_*`, `TILT_DELAY`) are constants at the top of the file and must stay
+within the ArduPilot limits in `scripts/intercept.parm`. The simulated camera
+Iris is 1.76 kg; mass is documented but is not an input to the
+acceleration-based solver.
 
 ## Gazebo models (`models/`)
 
-- `ardupilot/iris_cam`, `ardupilot/worlds/drone_world.sdf` (world name `iris_runway`): the ArduPilot iris with a forward camera.
-- `drop_ball.sdf` (orange, for the HSV detector), `plastic_bottle.sdf` and the spawner scripts `launch_ball.py` (`X Y Z V0` kicks straight up, `X Y Z VX VY VZ` throws in any direction), `glide_ball.py`, `glide_bottle.py` (Gazebo transport; `WORLD` env var selects the world, default `iris_runway`).
+- `ardupilot/iris_cam`, `ardupilot/worlds/drone_world.sdf` (world name `iris_runway`): the ArduPilot iris with a flat light-grey background and slightly darker uniform grey ground. There is no runway texture, coloured axis marker or static orange target, so HSV receives only objects spawned for the current test.
+- `drop_ball.sdf` (orange, for the HSV detector), `plastic_bottle.sdf` and the spawner scripts `launch_ball.py` (no arguments places the ball 5.2 m in front of the live `iris_cam`, 0.3 m to its right, at camera height; a 0.2 s simulated force pulse launches it toward the camera at 3.5 m/s and up at 5.5 m/s; the launcher checks the nominal ascending camera FOV, then verifies actual Gazebo release position, velocity, and gravity-only parabolic coast from pose timestamps, retrying once if the force was missed; `X Y Z V0` kicks straight up at an absolute position; `X Y Z VX VY VZ` throws in any absolute direction), `glide_ball.py`, `glide_bottle.py` (Gazebo transport; `WORLD` env var selects the world, default `iris_runway`).
 
 ## Tools
 
@@ -85,5 +90,5 @@ The drone limits shared by the predictor and the interceptor (`A_MAX_*`, `V_MAX_
 
 ```bash
 colcon build --packages-select state_estimation
-python3 -m pytest state_estimation/test/test_kalman_gravity.py
+python3 -m pytest src/state_estimation/test/test_kalman_gravity.py
 ```

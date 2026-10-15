@@ -18,9 +18,9 @@ from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
-DEFAULT_WORLD = os.path.expanduser(
-    '/mnt/c/Users/User/OneDrive/Documents/GitHub/drone-v1/'
-    'state_estimation/models/ardupilot/worlds/drone_world.sdf')
+DEFAULT_WORLD = os.path.join(
+    get_package_share_directory('state_estimation'),
+    'models', 'ardupilot', 'worlds', 'drone_world.sdf')
 
 # SITL over UDP. On the real drone: /dev/ttyAMA0:921600
 DEFAULT_FCU_URL = 'udp://:14550@'
@@ -35,19 +35,22 @@ T_INTERCEPT = 35.0        # interceptor (arms and takes off on its own)
 # Hover/takeoff height (m above home, ENU z).
 TAKEOFF_HEIGHT = 4.0
 
-# Drone limits shared by the predictor and the interceptor. They must not
-# exceed what ArduPilot is allowed to fly (scripts/intercept.parm):
-#   a_max_h 9.8 m/s^2   = g*tan(45 deg) at ATC_ANGLE_MAX 45: the cap on
+# ArduPilot Gazebo Iris model at ardupilot_gazebo commit 082a0fe:
+#   mass = 1.76 kg (1.50 base + 0.15 IMU + 4*0.025 rotors + 0.01 camera)
+#   maximum commanded rotor speed = 838 rad/s
+# Mass is not an input to these acceleration-based solvers: ArduPilot's
+# closed-loop controller compensates for it. The limits below are the
+# controller caps loaded from scripts/intercept.parm and shared by the
+# predictor and interceptor:
+#   a_max_h 9.80665 m/s^2 = g*tan(45 deg) at ATC_ANGLE_MAX 45: the cap on
 #                         acceleration-only targets (chase_mode 'thrust').
 #                         Velocity targets are shaped at WP_ACC (5 m/s^2, its
 #                         maximum), so use a_max_h <= 5 with chase_mode 'velocity'.
-#   a_max_up 4.5 m/s^2  < WP_ACC_Z 5, under the iris's full-thrust climb
-#   a_max_dn 5.0 m/s^2  = WP_ACC_Z 5
+#   a_max_up/dn 5 m/s^2 = WP_ACC_Z 5
 #   v_max_h 20 m/s      = WP_SPD 20 (its maximum)
 #   v_max_up 8, v_max_dn 4 m/s = WP_SPD_UP / WP_SPD_DN
-# UNVERIFIED in sim: these were PX4 x500 numbers (a_max_h 12.6, tilt 52 deg)
-# on the teleop branch, re-derived here for ArduPilot's iris.
-A_MAX_H, A_MAX_UP, A_MAX_DN = 9.8, 4.5, 5.0
+# These are commanded/controlled limits, not airframe structural ratings.
+A_MAX_H, A_MAX_UP, A_MAX_DN = 9.80665, 5.0, 5.0
 V_MAX_H, V_MAX_UP, V_MAX_DN = 20.0, 8.0, 4.0
 # s before a commanded acceleration takes effect. ArduPilot ramps
 # acceleration at PSC_NE_JERK (20 m/s^3 -> ~0.5 s to full a_max_h, ~0.25 s
@@ -77,7 +80,7 @@ def generate_launch_description():
     # perception_node's own default is stock yolo11n.pt ('sports ball');
     # target_class above must be a class of this model.
     yolo_model_arg = DeclareLaunchArgument(
-        'yolo_model', default_value=os.path.expanduser('~/ros2_ws/best.pt'),
+        'yolo_model', default_value=os.path.expanduser('~/ros_ardupilot_ws/src/best.pt'),
         description='YOLO weights for perception:=yolo (best.pt, or yolo11n.pt with '
                     "target_class:='sports ball')")
 
@@ -128,12 +131,12 @@ def generate_launch_description():
         output='screen'
     )
 
-    # Waits for MAVROS/FCU, then forces tf.send=false and requests 30 Hz
+    # Waits for MAVROS/FCU, then forces tf.send=false and requests 100 Hz
     # ATTITUDE / ATTITUDE_QUATERNION / LOCAL_POSITION_NED; retries, then exits.
     mavros_setup = Node(
         package='state_estimation',
         executable='mavros_setup',
-        parameters=[{'message_ids': [30, 31, 32], 'message_rate': 30.0}],
+        parameters=[{'message_ids': [30, 31, 32], 'message_rate': 100.0}],
         output='screen'
     )
 
@@ -227,12 +230,14 @@ def generate_launch_description():
         # h_target: lowest height above the ground (z-up) at which the ball
         # may be intercepted. A high limit (e.g. 3 m) leaves too little
         # flight time for the drone to reach a parabolic target, so the
-        # predictor never publishes a point. The solver uses one vertical
-        # limit: the smaller of climb and descent.
+        # predictor never publishes a point. The solver selects the configured
+        # climb or descent limits from the candidate intercept direction.
         parameters=[{'use_sim_time': True, 'object_model': object_model, 'h_target': 0.3,
                      'tilt_delay': TILT_DELAY, 'intercept_mode': 'ellipsoid',
-                     'a_max_h': A_MAX_H, 'v_max_h': V_MAX_H,
-                     'a_max_v': min(A_MAX_UP, A_MAX_DN), 'v_max_v': min(V_MAX_UP, V_MAX_DN)}],
+                     'a_max_h': A_MAX_H,
+                     'a_max_up': A_MAX_UP, 'a_max_dn': A_MAX_DN,
+                     'v_max_h': V_MAX_H,
+                     'v_max_up': V_MAX_UP, 'v_max_dn': V_MAX_DN}],
         output='screen'
     )
 

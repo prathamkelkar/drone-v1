@@ -36,7 +36,7 @@ Gazebo must find the models (in `~/.bashrc`):
 ```bash
 export GZ_SIM_SYSTEM_PLUGIN_PATH=$HOME/ardupilot_gazebo/build:$GZ_SIM_SYSTEM_PLUGIN_PATH
 export GZ_SIM_RESOURCE_PATH=$HOME/ardupilot_gazebo/models:$HOME/ardupilot_gazebo/worlds:$GZ_SIM_RESOURCE_PATH
-export GZ_SIM_RESOURCE_PATH=<repo>/state_estimation/models/ardupilot:$GZ_SIM_RESOURCE_PATH
+export GZ_SIM_RESOURCE_PATH=$HOME/ros_ardupilot_ws/src/state_estimation/models/ardupilot:$GZ_SIM_RESOURCE_PATH
 ```
 
 ## Build
@@ -44,7 +44,7 @@ export GZ_SIM_RESOURCE_PATH=<repo>/state_estimation/models/ardupilot:$GZ_SIM_RES
 Use **system** Python for colcon and every ROS terminal (never the ArduPilot venv).
 
 ```bash
-cd ~/ros2_ws            # src/ contains symlinks to this repo's packages
+cd ~/ros_ardupilot_ws
 source /opt/ros/jazzy/setup.bash
 colcon build
 source install/setup.bash
@@ -66,20 +66,23 @@ reboot
 ## Running
 
 1. **T1, Gazebo.** Started by the launch file in step 3; no separate terminal needed.
-   (To run it by hand: `gz sim -v4 -r state_estimation/models/ardupilot/worlds/drone_world.sdf`.)
+   (To run it by hand: `gz sim -v4 -r src/state_estimation/models/ardupilot/worlds/drone_world.sdf`.)
 2. **T2, ArduPilot SITL** (needs the venv and an interactive MAVProxy prompt,
    so it is never started by the launch file):
    ```bash
-   scripts/start_sitl.sh
+   cd ~/ros_ardupilot_ws
+   src/scripts/start_sitl.sh
    # = source ~/venv-ardupilot/bin/activate && cd ~/ardupilot/ArduCopter && \
    #   sim_vehicle.py -v ArduCopter -f gazebo-iris --model JSON --console --out 127.0.0.1:14550 \
-   #     --add-param-file=scripts/intercept.parm
+   #     --add-param-file=src/scripts/intercept.parm
    ```
    `scripts/intercept.parm` raises ArduPilot's lean angle, speed,
    acceleration and jerk limits for the interceptor (see `intercept/README.md`).
 3. **T3, the pipeline:**
    ```bash
-   source ~/ros2_ws/install/setup.bash
+   cd ~/ros_ardupilot_ws
+   source /opt/ros/jazzy/setup.bash
+   source install/setup.bash
    ros2 launch state_estimation full_pipeline.launch.py perception_device:=cpu
    ```
    Launch arguments: `world` (SDF path), `fcu_url` (default `udp://:14550@`;
@@ -88,7 +91,8 @@ reboot
    default, for `glide_*.py`; `ballistic` for `launch_ball.py`: sets the
    Kalman filter gravity and the predictor's object model together),
    `target_class` (`ball`, `carton` or `plastic_bottle`; default `plastic_bottle`)
-   and `yolo_model` (default `~/ros2_ws/best.pt`), both only for `perception:=yolo`.
+   and `yolo_model` (default `~/ros_ardupilot_ws/src/best.pt`), both only for
+   `perception:=yolo`.
    Stage delays are the `T_*` constants at the top of the launch file (the
    sim runs at ~36% real time, so they are generous).
 4. **Flight.** The interceptor (started at t≈35 s) sets GUIDED, arms, takes off to
@@ -101,17 +105,93 @@ reboot
    ```
 
 `mavros_setup` (started by the launch) turns MAVROS's own TF off and requests
-ATTITUDE / ATTITUDE_QUATERNION / LOCAL_POSITION_NED at 30 Hz; without it
+ATTITUDE / ATTITUDE_QUATERNION / LOCAL_POSITION_NED at 100 Hz; without it
 odometry arrives at ~2.7 Hz. It retries until MAVROS and the FCU are up, so
 SITL may be started before or after the launch.
 
-5. **A target.** With the drone hovering, spawn an object in front of it,
-   e.g. `state_estimation/models/glide_ball.py` (with `motion:=linear`) or
-   `state_estimation/models/launch_ball.py 0.3 2.0 3.0 0 0 5.0` (with
-   `motion:=ballistic`). `state_estimation/tools/intercept_check.py` (start it
-   first) reports the closest approach from Gazebo's own poses;
-   `state_estimation/tools/spectate.py` records the attempt from three
-   spectator cameras plus the drone's.
+5. **A target.** The world contains no built-in orange target: spawn exactly
+   one test object after the drone is hovering. Use `motion:=linear` with
+   `glide_ball.py`, or restart the launch with `motion:=ballistic` before using
+   `launch_ball.py`. With no arguments, the launcher reads the drone's current
+   Gazebo pose and places the ball 5.2 m ahead, 0.3 m to the camera's right,
+   at camera height. A 0.2 s simulated launch pulse accelerates it toward
+   3.5 m/s toward the drone and 5.5 m/s up; after the pulse it follows a
+   gravity-only parabola. The ascending arc through its apex remains inside
+   the nominal level-hover camera FOV. The planner's configured ArduPilot
+   limits yield a feasible intercept even if the drone begins to move 0.6 s
+   after the pulse (idealized straight-line model, not a flight guarantee).
+   The launcher checks actual Gazebo pose samples and retries once if the
+   force was missed; only a
+   `Gazebo verified release at ... coast az=...` line means the throw
+   succeeded. It uses the live camera heading, so drone yaw can change:
+
+   ```bash
+   cd ~/ros_ardupilot_ws
+   source /opt/ros/jazzy/setup.bash
+   /usr/bin/python3 src/state_estimation/models/launch_ball.py
+   ```
+
+## Ballistic intercept test and recording
+
+Start the pipeline in ballistic mode:
+
+```bash
+cd ~/ros_ardupilot_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 launch state_estimation full_pipeline.launch.py \
+  perception:=hsv motion:=ballistic perception_device:=cpu
+```
+
+After the drone is hovering, create a fresh output directory. In every
+recorder terminal, run the common setup below and then start one recorder
+**before** spawning the ball:
+
+```bash
+cd ~/ros_ardupilot_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+mkdir -p test_runs/run_01
+
+# Run one of the following in each terminal:
+
+# Gazebo ground-truth closest approach (prints HIT/MISS and saves a plot)
+/usr/bin/python3 src/state_estimation/tools/intercept_check.py \
+  --object drop_ball --duration 20 \
+  --save test_runs/run_01/intercept_result.png
+
+# Raw localisation versus Kalman-filter output
+/usr/bin/python3 src/state_estimation/tools/plot_kf.py \
+  --duration 20 --save test_runs/run_01/kf_output.png
+
+# Four-camera MP4; q or Ctrl-C finalises the file
+/usr/bin/python3 src/state_estimation/tools/spectate.py \
+  --out test_runs/run_01/intercept.mp4 --rate 10 --slowmo 2
+```
+
+For a replayable numeric log, start this in another ROS-sourced terminal:
+
+```bash
+cd ~/ros_ardupilot_ws
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 bag record -o test_runs/run_01/kf_bag --topics \
+  /clock /detected_object /estimation/pose_object_raw \
+  /estimation/object_state /planning/intercept_ellipsoid \
+  /mavros/local_position/odom /mavros/local_position/velocity_local
+```
+
+Stop the bag with Ctrl-C. Use a new `run_XX` directory for each attempt.
+
+Once the recorders say they are ready, launch the ball from a separate
+terminal. Do not pass fixed coordinates: the no-argument mode reads the live
+`iris_cam` pose and builds the arc in front of its current heading.
+
+```bash
+cd ~/ros_ardupilot_ws
+source /opt/ros/jazzy/setup.bash
+/usr/bin/python3 src/state_estimation/models/launch_ball.py
+```
 
 ## Quick checks
 
@@ -127,7 +207,7 @@ ros2 topic hz /mavros/local_position/odom            # ~30 Hz (sim time)
 
 | Symptom | Likely cause |
 |---|---|
-| Gazebo world loads without the drone | `GZ_SIM_RESOURCE_PATH` misses `state_estimation/models/ardupilot` or `ardupilot_gazebo/models` |
+| Gazebo world loads without the drone | `GZ_SIM_RESOURCE_PATH` misses `src/state_estimation/models/ardupilot` or `ardupilot_gazebo/models` |
 | SITL stuck at "waiting for JSON" | Gazebo not running / `GZ_SIM_SYSTEM_PLUGIN_PATH` misses `ardupilot_gazebo/build` |
 | `/mavros/state` `connected: false` | SITL not started with `--out 127.0.0.1:14550` |
 | Arming rejected repeatedly | EKF still initialising (wait), or pre-arm failure: see the MAVProxy console |

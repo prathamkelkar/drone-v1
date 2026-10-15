@@ -2,14 +2,19 @@
 # (sim_vehicle.py --add-param-file). ArduPilot equivalent of the PX4_PARAM_*
 # limits the teleop branch set for the x500. The interceptor's / predictor's
 # a_max_* / v_max_* (full_pipeline.launch.py) must stay at or below these.
-# Names/units are those of the ArduPilot checked out in ~/ardupilot (4.7-dev:
-# SI units, WP_* not WPNAV_*); older releases use WPNAV_SPEED etc. in cm.
-# UNVERIFIED in sim: values chosen from the parameter docs, not flight-tested.
+# Names/units are those of the current ArduPilot checkout in ~/ardupilot
+# (SI units, WP_* not WPNAV_*); older releases use WPNAV_SPEED etc. in cm.
+# These are controller command limits, not physical airframe ratings. The
+# configured values are checked into the launch model and should still be
+# validated with a Gazebo step-response test before hardware use.
 
-# Lean angle limit (deg). The iris has thrust/weight ~1.5, so it can hold
-# altitude up to ~48 deg; ArduPilot also reduces lean when it runs out of
-# thrust headroom. 45 deg -> g*tan(45) = 9.8 m/s^2 horizontal. This is what
-# caps acceleration-only GUIDED targets (thrust chase mode).
+# Lean angle limit (deg). 45 deg -> g*tan(45) = 9.80665 m/s^2 horizontal.
+# ArduPilot reduces lean if the simulated vehicle runs out of thrust headroom.
+# This caps acceleration-only GUIDED targets (thrust chase mode).
+
+FRAME_CLASS 1
+FRAME_TYPE 1
+
 ATC_ANGLE_MAX      45    # default 30 (range 10-80)
 PSC_ANGLE_MAX      45    # 0 = use ATC_ANGLE_MAX; range 0-45
 

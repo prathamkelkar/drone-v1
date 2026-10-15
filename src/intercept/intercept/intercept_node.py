@@ -99,16 +99,16 @@ class OffboardInterceptNode(Node):
         # Defaults below are for running the node on its own; the launch
         # file overrides most of them.
         self.declare_parameter('chase_mode', 'thrust')
-        self.declare_parameter('v_max_h', 12.0)   # m/s, <= WP_SPD
-        self.declare_parameter('v_max_up', 6.0)   # m/s, <= WP_SPD_UP
+        self.declare_parameter('v_max_h', 20.0)   # m/s, <= WP_SPD
+        self.declare_parameter('v_max_up', 8.0)   # m/s, <= WP_SPD_UP
         self.declare_parameter('v_max_dn', 4.0)   # m/s, <= WP_SPD_DN
-        self.declare_parameter('a_brake', 8.0)    # m/s^2 braking after the chase / flying home
+        self.declare_parameter('a_brake', 9.80665)  # m/s^2 braking after chase / flying home
         # Acceleration limits: the feedforward magnitudes in velocity mode
         # and the guidance limits in thrust mode. Horizontal: <= WP_ACC in
         # velocity mode, <= g*tan(ATC_ANGLE_MAX) in thrust mode; vertical
         # <= WP_ACC_Z and what the thrust allows.
-        self.declare_parameter('a_max_h', 9.8)    # m/s^2
-        self.declare_parameter('a_max_up', 4.5)   # m/s^2
+        self.declare_parameter('a_max_h', 9.80665)  # m/s^2
+        self.declare_parameter('a_max_up', 5.0)   # m/s^2
         self.declare_parameter('a_max_dn', 5.0)   # m/s^2
         self.declare_parameter('pass_radius', 1.0)  # m, point behind us within this -> passed
         # s, time to tilt from full acceleration to full braking (estimate;

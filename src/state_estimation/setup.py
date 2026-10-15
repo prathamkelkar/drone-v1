@@ -4,6 +4,16 @@ from glob import glob
 
 package_name = 'state_estimation'
 
+
+def package_model_files():
+    """Install simulation assets while preserving their directory layout."""
+    return [
+        (os.path.join('share', package_name, os.path.dirname(path)), [path])
+        for path in glob('models/**/*', recursive=True)
+        if os.path.isfile(path)
+    ]
+
+
 setup(
     name=package_name,
     version='0.0.0',
@@ -14,7 +24,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-    ],
+    ] + package_model_files(),
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='prathamkelkar',
