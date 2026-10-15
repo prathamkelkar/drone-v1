@@ -11,8 +11,12 @@ and flies to intercept it.
 ```
 
 Stack: ROS 2 Jazzy, Gazebo Harmonic, ArduPilot SITL (ArduCopter, `iris_cam`
-model with a forward camera), MAVROS. All frames are ROS-standard ENU (world)
-/ FLU (body). TF chain: `world -> map` (identity, static) `-> base_link`
+model with a forward RGB-D camera on this branch), MAVROS. RGB stays on
+`/camera/image_raw`; aligned 0.1–4.0 m depth is on `/camera/depth_image`
+(`32FC1` metres). The existing localizer still estimates depth from known
+object width; it does not consume the depth image yet. All frames are
+ROS-standard ENU (world) / FLU (body). TF chain: `world -> map` (identity,
+static) `-> base_link`
 (`odom_to_tf`, from `/mavros/local_position/odom`) `-> camera_link` (static,
 optical frame).
 
@@ -66,7 +70,7 @@ reboot
 ## Running
 
 1. **T1, Gazebo.** Started by the launch file in step 3; no separate terminal needed.
-   (To run it by hand: `gz sim -v4 -r src/state_estimation/models/ardupilot/worlds/drone_world.sdf`.)
+   (To run it by hand: `gz sim -v4 -r src/state_estimation/models/ardupilot/worlds/drone_world_depth.sdf`.)
 2. **T2, ArduPilot SITL** (needs the venv and an interactive MAVProxy prompt,
    so it is never started by the launch file):
    ```bash
@@ -201,6 +205,8 @@ ros2 param get /mavros/local_position tf.send        # false
 ros2 run tf2_ros tf2_echo world camera_link          # z ~ 4.2 m in hover
 ros2 run tf2_tools view_frames                       # one tree, one map->base_link publisher
 ros2 topic hz /mavros/local_position/odom            # ~30 Hz (sim time)
+ros2 topic list | grep -E '^/camera/(image_raw|camera_info|depth_image)$'
+ros2 topic echo /camera/depth_image --once --field encoding  # 32FC1
 ```
 
 ## Troubleshooting

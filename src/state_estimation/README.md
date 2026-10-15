@@ -48,14 +48,15 @@ Computes the camera-relative yaw/pitch angle to the detected object: `angle = at
 
 ## Launch file: `launch/full_pipeline.launch.py`
 
-Starts Gazebo (`drone_world.sdf`), MAVROS, the bridges and the whole pipeline,
+On the `ardupilot_depth_camera` branch, starts Gazebo
+(`drone_world_depth.sdf`), MAVROS, the bridges and the whole pipeline,
 staged with delays (constants `T_*` at the top of the file). ArduPilot SITL is
-**not** started by it; see the top-level README.
+**not** started by it; see `src/README.md`.
 
 | t (s) | Started |
 |---|---|
 | 0 | `gz sim` |
-| 10 | `ros_gz_bridge` (`/clock`, `/camera/image` → `/camera/image_raw`, `/camera/camera_info`), MAVROS (`mavros_node` with the stock ArduPilot config + `config/mavros_overrides.yaml`) |
+| 10 | `ros_gz_bridge` (`/clock`, `/camera/image` → `/camera/image_raw`, `/camera/camera_info`, `/camera/depth_image`), MAVROS (`mavros_node` with the stock ArduPilot config + `config/mavros_overrides.yaml`) |
 | 20 | `mavros_setup`, static TFs `world -> map` and `base_link -> camera_link`, `odom_to_tf` |
 | 25 | `perception_without_nn` or `perception_node`, `object_localizer`, `object_kalman_filter` |
 | 30 | `trajectory_predictor_ellipsoid`, `rotate_command` |
@@ -72,6 +73,7 @@ acceleration-based solver.
 ## Gazebo models (`models/`)
 
 - `ardupilot/iris_cam`, `ardupilot/worlds/drone_world.sdf` (world name `iris_runway`): the ArduPilot iris with a flat light-grey background and slightly darker uniform grey ground. There is no runway texture, coloured axis marker or static orange target, so HSV receives only objects spawned for the current test.
+- `ardupilot/iris_depth`, `ardupilot/worlds/drone_world_depth.sdf`: the default on this branch. It uses a project-owned copy of the ArduPilot Iris and its model/mesh dependencies. The original `iris_cam` files and external `ardupilot_gazebo` checkout are not modified. The world still names the drone entity `iris_cam`, so existing object spawners and recording tools work. Its single forward RGB-D sensor is mounted at `(0.10, 0, 0.02)` m relative to the Iris base link, with the same 640×640 image and optical frame (`camera_link`) as before. RGB remains available on `/camera/image_raw` with `/camera/camera_info`; the new depth image is `/camera/depth_image` (`sensor_msgs/Image`, `32FC1`, metres), valid from 0.1 to 4.0 m. Pixels outside that depth range are invalid (normally infinity); check validity before using them. The RGB image can still show objects beyond 4 m. This branch only exposes the depth sensor: `object_localizer` still uses known object width, and no depth-based localization or detection logic has been changed. The default ball launcher starts 5.2 m in front of the drone, so its first frames may be outside depth range.
 - `drop_ball.sdf` (orange, for the HSV detector), `plastic_bottle.sdf` and the spawner scripts `launch_ball.py` (no arguments places the ball 5.2 m in front of the live `iris_cam`, 0.3 m to its right, at camera height; a 0.2 s simulated force pulse launches it toward the camera at 3.5 m/s and up at 5.5 m/s; the launcher checks the nominal ascending camera FOV, then verifies actual Gazebo release position, velocity, and gravity-only parabolic coast from pose timestamps, retrying once if the force was missed; `X Y Z V0` kicks straight up at an absolute position; `X Y Z VX VY VZ` throws in any absolute direction), `glide_ball.py`, `glide_bottle.py` (Gazebo transport; `WORLD` env var selects the world, default `iris_runway`).
 
 ## Tools

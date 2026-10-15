@@ -20,7 +20,7 @@ from launch_ros.actions import Node
 
 DEFAULT_WORLD = os.path.join(
     get_package_share_directory('state_estimation'),
-    'models', 'ardupilot', 'worlds', 'drone_world.sdf')
+    'models', 'ardupilot', 'worlds', 'drone_world_depth.sdf')
 
 # SITL over UDP. On the real drone: /dev/ttyAMA0:921600
 DEFAULT_FCU_URL = 'udp://:14550@'
@@ -146,6 +146,7 @@ def generate_launch_description():
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/camera/image@sensor_msgs/msg/Image[gz.msgs.Image',
             '/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            '/camera/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
             '--ros-args', '-r', '/camera/image:=/camera/image_raw',
         ],
         output='screen'
@@ -161,7 +162,8 @@ def generate_launch_description():
     )
 
     # base_link (FLU: x fwd, y left, z up) -> camera_link (optical: x right,
-    # y down, z forward). Mount from iris_cam/model.sdf: 0.10 m forward, 0.02 m up.
+    # y down, z forward). Mount from iris_depth/model.sdf: 0.10 m forward,
+    # 0.02 m up; RGB and depth share this optical frame.
     static_tf = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
