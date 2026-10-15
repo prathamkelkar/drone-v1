@@ -20,7 +20,7 @@ from launch_ros.actions import Node
 
 DEFAULT_WORLD = os.path.join(
     get_package_share_directory('state_estimation'),
-    'models', 'ardupilot', 'worlds', 'drone_world.sdf')
+    'models', 'ardupilot', 'worlds', 'drone_world_stereo.sdf')
 
 # SITL over UDP. On the real drone: /dev/ttyAMA0:921600
 DEFAULT_FCU_URL = 'udp://:14550@'
@@ -35,8 +35,8 @@ T_INTERCEPT = 35.0        # interceptor (arms and takes off on its own)
 # Hover/takeoff height (m above home, ENU z).
 TAKEOFF_HEIGHT = 4.0
 
-# ArduPilot Gazebo Iris model at ardupilot_gazebo commit 082a0fe:
-#   mass = 1.76 kg (1.50 base + 0.15 IMU + 4*0.025 rotors + 0.01 camera)
+# Project stereo copy of the ArduPilot Gazebo Iris at commit 082a0fe:
+#   mass = 1.77 kg (1.50 base + 0.15 IMU + 4*0.025 rotors + 2*0.01 cameras)
 #   maximum commanded rotor speed = 838 rad/s
 # Mass is not an input to these acceleration-based solvers: ArduPilot's
 # closed-loop controller compensates for it. The limits below are the
@@ -146,7 +146,11 @@ def generate_launch_description():
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/camera/image@sensor_msgs/msg/Image[gz.msgs.Image',
             '/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
-            '--ros-args', '-r', '/camera/image:=/camera/image_raw',
+            '/stereo/right/image@sensor_msgs/msg/Image[gz.msgs.Image',
+            '/stereo/right/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            '--ros-args',
+            '-r', '/camera/image:=/camera/image_raw',
+            '-r', '/stereo/right/image:=/stereo/right/image_raw',
         ],
         output='screen'
     )
@@ -160,15 +164,28 @@ def generate_launch_description():
         output='screen'
     )
 
-    # base_link (FLU: x fwd, y left, z up) -> camera_link (optical: x right,
-    # y down, z forward). Mount from iris_cam/model.sdf: 0.10 m forward, 0.02 m up.
+    # Stereo mount from iris_stereo/model.sdf: 0.12 m horizontal baseline.
+    # base_link is FLU (x forward, y left, z up). Both camera TFs use the
+    # same optical rotation (x right, y down, z forward).
     static_tf = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=[
-            '--x', '0.10', '--y', '0', '--z', '0.02',
+            '--x', '0.10', '--y', '0.06', '--z', '0.02',
             '--qx', '-0.5', '--qy', '0.5', '--qz', '-0.5', '--qw', '0.5',
             '--frame-id', 'base_link', '--child-frame-id', 'camera_link',
+        ],
+        parameters=[{'use_sim_time': True}],
+        output='screen'
+    )
+
+    right_static_tf = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=[
+            '--x', '0.10', '--y', '-0.06', '--z', '0.02',
+            '--qx', '-0.5', '--qy', '0.5', '--qz', '-0.5', '--qw', '0.5',
+            '--frame-id', 'base_link', '--child-frame-id', 'camera_right_link',
         ],
         parameters=[{'use_sim_time': True}],
         output='screen'
@@ -287,6 +304,7 @@ def generate_launch_description():
             mavros_setup,
             world_to_map,
             static_tf,
+            right_static_tf,
             odom_to_tf,
         ]),
 
