@@ -1,67 +1,79 @@
+# ROS 2 / colcon workspace output
+/build/
+/install/
+/log/
+/test_runs/
 
-# Byte-compiled / optimized / DLL files
+# ROS recordings and generated logs
+*.bag
+*.bag.active
+*.db3
+*.mcap
+*.log
+
+# Python bytecode and caches
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Unit test / coverage reports
-.coverage
-.coverage.*
-htmlcov/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
 .hypothesis/
 
-# Type checkers
-.mypy_cache/
-.dmypy.json
-dmypy.json
-.pyre/
+# Test and coverage output
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
 
-# Environments
+# Python packaging output
+*.egg
+*.egg-info/
+.eggs/
+dist/
+develop-eggs/
+pip-wheel-metadata/
+wheels/
+MANIFEST
+
+# Native/CMake build output
+*.so
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+
+# Virtual environments and local configuration
 .env
+.env.*
+!.env.example
 .venv/
-env/
 venv/
+env/
 ENV/
-env.bak/
-venv.bak/
 
-# IDEs and editors
+# Editors and operating systems
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
+.DS_Store
+Thumbs.db
 
-# Documentation
-docs/_build/
+# Local agent/tool metadata
+/.agents/
+/.aws/
+/.codex/
 
-# colcon workspace output
-install/
-log/
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+core
+core.*
